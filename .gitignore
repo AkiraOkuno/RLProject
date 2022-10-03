@@ -51,6 +51,7 @@
 *.Rdata
 *.Rds
 *.csv
+*.txt
 
 # Python #
 ##########
