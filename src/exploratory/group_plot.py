@@ -1,14 +1,16 @@
-from src.utils import general_utils
-
-import pandas as pd
-import matplotlib.pyplot as plt
-from matplotlib.pyplot import cm
-import numpy as np
 import argparse
 import pathlib
 import random
 from datetime import datetime
+
+import numpy as np
+import pandas as pd
+from matplotlib import pyplot as plt
+from matplotlib.pyplot import cm
 from tqdm import tqdm
+
+from src.utils import general_utils
+
 
 parser = argparse.ArgumentParser()
 
