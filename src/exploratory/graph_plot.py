@@ -1,13 +1,11 @@
 import argparse
 import pathlib
 import random
-from datetime import datetime
 
 import networkx as nx
 import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
-from matplotlib.pyplot import cm
 from tqdm import tqdm
 
 
@@ -27,6 +25,9 @@ group.add_argument(
 args = parser.parse_args()
 
 DATA_PATH = pathlib.Path("data/processed")
+OUTPUT_PATH = pathlib.Path("outputs/plots/graphs")
+OUTPUT_PATH.mkdir(parents=True, exist_ok=True)
+
 
 df = pd.read_csv(DATA_PATH / "df_merge.csv")
 
@@ -51,8 +52,6 @@ for gid in selected_group_ids:
     G = nx.DiGraph()
     G.add_nodes_from(guardians)
 
-    edgelist = []
-
     for i in tqdm(range(1, df_group.shape[0])):
 
         guardian_previous = df_group["guardian_id"].values[i - 1]
@@ -67,7 +66,6 @@ for gid in selected_group_ids:
                     G[guardian_previous][guardian_current]["weight"] += 1
                 else:
                     G.add_edge(guardian_previous, guardian_current, weight=1)
-                # edgelist.append((guardian_previous,guardian_current))
 
     widths = nx.get_edge_attributes(G, "weight")
     nodelist = G.nodes()
@@ -96,4 +94,5 @@ for gid in selected_group_ids:
     plt.box(False)
 
     plt.title(f"Group {int(gid)} - Guardian sequential interactions graph")
-    plt.savefig(f"outputs/plots/group_{gid}-guardian_sequential_interactions_graph.png")
+
+    plt.savefig(OUTPUT_PATH / f"group_{gid}-guardian_sequential_interactions_graph.png")

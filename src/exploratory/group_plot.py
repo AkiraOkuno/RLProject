@@ -48,6 +48,8 @@ group.add_argument(
 args = parser.parse_args()
 
 DATA_PATH = pathlib.Path("data/processed")
+OUTPUT_PATH = pathlib.Path("outputs/plots/timelines")
+OUTPUT_PATH.mkdir(parents=True, exist_ok=True)
 
 df = pd.read_csv(DATA_PATH / "df_merge.csv")
 
@@ -128,7 +130,8 @@ def group_plot(group_id, mi, yi, mf, yf, ci, data=df):
 
     plt.title(f"Group {int(group_id)} - Cumulative new guardians")
     plt.savefig(
-        f"outputs/plots/group_{group_id}-mi_{mi}-yi_{yi}-mf_{mf}-yf_{yf}-ci_{ci}-cumulative_new_guardians.png"
+        OUTPUT_PATH
+        / f"group_{group_id}-mi_{mi}-yi_{yi}-mf_{mf}-yf_{yf}-ci_{ci}-cumulative_new_guardians.png"
     )
 
     ########################################################################################################
@@ -182,7 +185,8 @@ def group_plot(group_id, mi, yi, mf, yf, ci, data=df):
         )
 
     plt.savefig(
-        f"outputs/plots/group_{group_id}-mi_{mi}-yi_{yi}-mf_{mf}-yf_{yf}-ci_{ci}-cumulative_messages.png"
+        OUTPUT_PATH
+        / f"group_{group_id}-mi_{mi}-yi_{yi}-mf_{mf}-yf_{yf}-ci_{ci}-cumulative_messages.png"
     )
 
     ########################################################################################################
@@ -243,7 +247,8 @@ def group_plot(group_id, mi, yi, mf, yf, ci, data=df):
         )
 
     plt.savefig(
-        f"outputs/plots/group_{group_id}-mi_{mi}-yi_{yi}-mf_{mf}-yf_{yf}-ci_{ci}-cumulative_individual_messages.png"
+        OUTPUT_PATH
+        / f"group_{group_id}-mi_{mi}-yi_{yi}-mf_{mf}-yf_{yf}-ci_{ci}-cumulative_individual_messages.png"
     )
 
     ########################################################################################################
