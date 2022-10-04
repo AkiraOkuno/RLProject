@@ -1,14 +1,18 @@
 import pathlib
 import pandas as pd
 
+RAW_PATH = pathlib.Path("data/raw")
+
 OUTPUT_PATH = pathlib.Path("data/processed")
 OUTPUT_PATH.mkdir(parents=True, exist_ok=True)
 
 
 # import data
-df_guardian = pd.read_csv("data/raw/df_guardian_22.csv")
-df_moderator = pd.read_csv("data/raw/df_moderator_22.csv")
-df_interventions = pd.read_csv("data/raw/interventions_22.csv")
+df_guardian = pd.read_csv(RAW_PATH / "df_guardian_22.csv")
+df_moderator = pd.read_csv(RAW_PATH / "df_moderator_22.csv")
+
+# use new data with intervention types
+df_interventions = pd.read_csv("data/raw/df_interventions.csv")
 
 # preprocess dataframes
 df_guardian["message_type"] = df_guardian["message_type"].replace(
