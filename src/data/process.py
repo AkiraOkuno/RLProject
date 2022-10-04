@@ -1,4 +1,9 @@
+import pathlib
 import pandas as pd
+
+OUTPUT_PATH = pathlib.Path("data/processed")
+OUTPUT_PATH.mkdir(parents=True, exist_ok=True)
+
 
 # import data
 df_guardian = pd.read_csv("data/raw/df_guardian_22.csv")
@@ -23,7 +28,7 @@ df = df.sort_values("sent_time")
 df = df.reset_index(drop=True)
 
 # save to processed folder
-df_interventions.to_csv("data/processed/df_interventions.csv")
-df_moderator.to_csv("data/processed/df_moderator.csv")
-df_guardian.to_csv("data/processed/df_guardian.csv")
-df.to_csv("data/processed/df_merge.csv")
+df_interventions.to_csv(OUTPUT_PATH / "df_interventions.csv")
+df_moderator.to_csv(OUTPUT_PATH / "df_moderator.csv")
+df_guardian.to_csv(OUTPUT_PATH / "df_guardian.csv")
+df.to_csv(OUTPUT_PATH / "df_merge.csv")
