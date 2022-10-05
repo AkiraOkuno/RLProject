@@ -1,5 +1,4 @@
 import argparse
-from locale import currency
 import pathlib
 import random
 
@@ -28,7 +27,12 @@ parser.add_argument(
     action="store_true",
     help="create one graph per intervention",
 )
-
+parser.add_argument(
+    "--normalized_weights",
+    "-nw",
+    action="store_true",
+    help="normalize weights to between 0 and 10",
+)
 args = parser.parse_args()
 
 DATA_PATH = pathlib.Path("data/processed")
@@ -81,7 +85,7 @@ for gid in selected_group_ids:
 
             current_type = df_group["current_intervention_type"].values[i]
 
-            if (guardian_previous != guardian_current) and (currency):
+            if guardian_previous != guardian_current:
                 if pd.Timedelta(timestamp_current - timestamp_previous).days == 0:
                     if graph_dict[current_type].has_edge(
                         guardian_previous, guardian_current
@@ -94,18 +98,57 @@ for gid in selected_group_ids:
                             guardian_previous, guardian_current, weight=1
                         )
 
-        for itype in types:
+        # construct figure variables
+        n_subplots = len(types)
+
+        if n_subplots == 1:
+            n_cols = 1
+        elif n_subplots == 2:
+            n_cols = 2
+        else:
+            n_cols = 3
+
+        n_rows = n_subplots // n_cols
+
+        if n_subplots % n_cols != 0:
+            n_rows += 1
+
+        fig = plt.figure(1)
+        fig, ax = plt.subplots(n_rows, n_cols, num=1)
+        fig.set_figheight(18*n_rows)
+        fig.set_figwidth(18*n_cols)
+
+        plt.subplots_adjust(left=0.1,
+                    bottom=0.1,
+                    right=0.9,
+                    top=0.9,
+                    wspace=0.4,
+                    hspace=0.4)
+        
+        plt.box(False)
+
+        for idx, itype in enumerate(types):
 
             G = graph_dict[itype].copy()
 
             widths = nx.get_edge_attributes(G, "weight")
+
+            if args.normalized_weights:
+                if len(widths)>0:
+                    max_weight = max(widths.values())
+                    normalizing_constant = 10/max_weight
+                    widths = {k:v*normalizing_constant for k,v in widths.items()}
+            else:
+                # threshold to size of width for plots
+                widths = {k:min(v,15) for k,v in widths.items()}
+
             nodelist = G.nodes()
 
-            plt.figure(figsize=(20, 15))
+            ax = fig.add_subplot(n_rows, n_cols, idx+1)
 
             pos = nx.shell_layout(G)
             nx.draw_networkx_nodes(
-                G, pos, nodelist=nodelist, node_size=2000, node_color="black", alpha=0.7
+                G, pos, nodelist=nodelist, node_size=600, node_color="black", alpha=0.7, ax=ax
             )
             nx.draw_networkx_edges(
                 G,
@@ -114,24 +157,30 @@ for gid in selected_group_ids:
                 width=list(widths.values()),
                 edge_color="lightblue",
                 alpha=0.6,
+                ax=ax,
             )
             nx.draw_networkx_labels(
                 G,
                 pos=pos,
                 labels=dict(zip(nodelist, nodelist)),
                 font_color="white",
-                font_size=10,
+                font_size=2,
+                ax=ax,
             )
-            plt.box(False)
+            #ax.box(False)
+            ax.axis('off')
 
             plt.title(
-                f"Group {int(gid)} - Guardian sequential interactions graph under {itype} intervention"
+                f"Group {int(gid)} - Guardian sequential interactions graph\nunder {itype} intervention",
+                fontsize=30,
             )
 
-            plt.savefig(
-                OUTPUT_PATH
-                / f"group_{gid}-intervention_{itype}-guardian_sequential_interactions_graph.png"
-            )
+        print(f"group_{gid}-normalized_{args.normalized_weights}-guardian_sequential_interactions_graph_by_type.png")
+        plt.savefig(
+            OUTPUT_PATH
+            / f"group_{gid}-normalized_{args.normalized_weights}-guardian_sequential_interactions_graph_by_type.png"
+        )
+        plt.close()
 
     # if there is no distinction between interventions
     else:
