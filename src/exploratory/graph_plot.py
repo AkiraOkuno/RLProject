@@ -8,12 +8,15 @@ import pandas as pd
 from matplotlib import pyplot as plt
 from tqdm import tqdm
 
-
 parser = argparse.ArgumentParser()
 
 group = parser.add_mutually_exclusive_group()
 group.add_argument(
-    "--group_id", "-g", default=29782, help="Group id to do analysis", type=int,
+    "--group_id",
+    "-g",
+    default=29782,
+    help="Group id to do analysis",
+    type=int,
 )
 group.add_argument(
     "--random_groups",
@@ -87,16 +90,10 @@ for gid in selected_group_ids:
 
             if guardian_previous != guardian_current:
                 if pd.Timedelta(timestamp_current - timestamp_previous).days == 0:
-                    if graph_dict[current_type].has_edge(
-                        guardian_previous, guardian_current
-                    ):
-                        graph_dict[current_type][guardian_previous][guardian_current][
-                            "weight"
-                        ] += 1
+                    if graph_dict[current_type].has_edge(guardian_previous, guardian_current):
+                        graph_dict[current_type][guardian_previous][guardian_current]["weight"] += 1
                     else:
-                        graph_dict[current_type].add_edge(
-                            guardian_previous, guardian_current, weight=1
-                        )
+                        graph_dict[current_type].add_edge(guardian_previous, guardian_current, weight=1)
 
         # construct figure variables
         n_subplots = len(types)
@@ -115,16 +112,11 @@ for gid in selected_group_ids:
 
         fig = plt.figure(1)
         fig, ax = plt.subplots(n_rows, n_cols, num=1)
-        fig.set_figheight(18*n_rows)
-        fig.set_figwidth(18*n_cols)
+        fig.set_figheight(18 * n_rows)
+        fig.set_figwidth(18 * n_cols)
 
-        plt.subplots_adjust(left=0.1,
-                    bottom=0.1,
-                    right=0.9,
-                    top=0.9,
-                    wspace=0.4,
-                    hspace=0.4)
-        
+        plt.subplots_adjust(left=0.1, bottom=0.1, right=0.9, top=0.9, wspace=0.4, hspace=0.4)
+
         plt.box(False)
 
         for idx, itype in enumerate(types):
@@ -134,21 +126,27 @@ for gid in selected_group_ids:
             widths = nx.get_edge_attributes(G, "weight")
 
             if args.normalized_weights:
-                if len(widths)>0:
+                if len(widths) > 0:
                     max_weight = max(widths.values())
-                    normalizing_constant = 10/max_weight
-                    widths = {k:v*normalizing_constant for k,v in widths.items()}
+                    normalizing_constant = 10 / max_weight
+                    widths = {k: v * normalizing_constant for k, v in widths.items()}
             else:
                 # threshold to size of width for plots
-                widths = {k:min(v,15) for k,v in widths.items()}
+                widths = {k: min(v, 15) for k, v in widths.items()}
 
             nodelist = G.nodes()
 
-            ax = fig.add_subplot(n_rows, n_cols, idx+1)
+            ax = fig.add_subplot(n_rows, n_cols, idx + 1)
 
             pos = nx.shell_layout(G)
             nx.draw_networkx_nodes(
-                G, pos, nodelist=nodelist, node_size=600, node_color="black", alpha=0.7, ax=ax
+                G,
+                pos,
+                nodelist=nodelist,
+                node_size=600,
+                node_color="black",
+                alpha=0.7,
+                ax=ax,
             )
             nx.draw_networkx_edges(
                 G,
@@ -167,8 +165,8 @@ for gid in selected_group_ids:
                 font_size=2,
                 ax=ax,
             )
-            #ax.box(False)
-            ax.axis('off')
+            # ax.box(False)
+            ax.axis("off")
 
             plt.title(
                 f"Group {int(gid)} - Guardian sequential interactions graph\nunder {itype} intervention",
@@ -208,9 +206,7 @@ for gid in selected_group_ids:
         plt.figure(figsize=(20, 15))
 
         pos = nx.shell_layout(G)
-        nx.draw_networkx_nodes(
-            G, pos, nodelist=nodelist, node_size=2000, node_color="black", alpha=0.7
-        )
+        nx.draw_networkx_nodes(G, pos, nodelist=nodelist, node_size=2000, node_color="black", alpha=0.7)
         nx.draw_networkx_edges(
             G,
             pos,
@@ -230,6 +226,4 @@ for gid in selected_group_ids:
 
         plt.title(f"Group {int(gid)} - Guardian sequential interactions graph")
 
-        plt.savefig(
-            OUTPUT_PATH / f"group_{gid}-guardian_sequential_interactions_graph.png"
-        )
+        plt.savefig(OUTPUT_PATH / f"group_{gid}-guardian_sequential_interactions_graph.png")

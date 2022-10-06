@@ -1,4 +1,5 @@
 import pathlib
+
 import pandas as pd
 
 RAW_PATH = pathlib.Path("data/raw")

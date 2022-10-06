@@ -11,20 +11,35 @@ from tqdm import tqdm
 
 from src.utils import general_utils
 
-
 parser = argparse.ArgumentParser()
 
 parser.add_argument(
-    "--initial_month", "-mi", default=1, help="Month to do analysis", type=int,
+    "--initial_month",
+    "-mi",
+    default=1,
+    help="Month to do analysis",
+    type=int,
 )
 parser.add_argument(
-    "--initial_year", "-yi", default=2022, help="Year to do analysis", type=int,
+    "--initial_year",
+    "-yi",
+    default=2022,
+    help="Year to do analysis",
+    type=int,
 )
 parser.add_argument(
-    "--final_month", "-mf", default=2, help="Month to do analysis", type=int,
+    "--final_month",
+    "-mf",
+    default=2,
+    help="Month to do analysis",
+    type=int,
 )
 parser.add_argument(
-    "--final_year", "-yf", default=2022, help="Year to do analysis", type=int,
+    "--final_year",
+    "-yf",
+    default=2022,
+    help="Year to do analysis",
+    type=int,
 )
 parser.add_argument(
     "--colored_interventions",
@@ -34,7 +49,11 @@ parser.add_argument(
 )
 group = parser.add_mutually_exclusive_group()
 group.add_argument(
-    "--group_id", "-g", default=29782, help="Group id to do analysis", type=int,
+    "--group_id",
+    "-g",
+    default=29782,
+    help="Group id to do analysis",
+    type=int,
 )
 group.add_argument(
     "--random_groups",
@@ -43,7 +62,10 @@ group.add_argument(
     type=int,
 )
 group.add_argument(
-    "--all_groups", "-ag", help="All group ids are analyzed", action="store_true",
+    "--all_groups",
+    "-ag",
+    help="All group ids are analyzed",
+    action="store_true",
 )
 args = parser.parse_args()
 
@@ -63,12 +85,7 @@ df.loc[~np.isnan(df["moderator_id"].values), "action"] = "moderator"
 # filter dates
 df = df[
     (df["sent_time"] > datetime(args.initial_year, args.initial_month, 1))
-    & (
-        df["sent_time"]
-        < general_utils.last_day_of_month(
-            datetime(args.final_year, args.final_month, 1)
-        )
-    )
+    & (df["sent_time"] < general_utils.last_day_of_month(datetime(args.final_year, args.final_month, 1)))
 ]
 
 
@@ -85,9 +102,7 @@ def group_plot(group_id, mi, yi, mf, yf, ci, data=df):
     ########################################################################################################
 
     # calculate entry of new guardians
-    cumulative_new_guardians = general_utils.cumulative_distinct_values(
-        df_group["guardian_id"]
-    )
+    cumulative_new_guardians = general_utils.cumulative_distinct_values(df_group["guardian_id"])
     breakpoint()
     plt.figure(figsize=(22, 7))
     plt.plot(dates, cumulative_new_guardians.values, color="r")
@@ -103,9 +118,7 @@ def group_plot(group_id, mi, yi, mf, yf, ci, data=df):
 
         for iid in intervention_df["interventions_id"].dropna().unique():
 
-            timestamps = intervention_df[intervention_df["interventions_id"] == iid][
-                "sent_time"
-            ].values
+            timestamps = intervention_df[intervention_df["interventions_id"] == iid]["sent_time"].values
 
             plt.vlines(
                 x=timestamps,
@@ -129,10 +142,7 @@ def group_plot(group_id, mi, yi, mf, yf, ci, data=df):
         )
 
     plt.title(f"Group {int(group_id)} - Cumulative new guardians")
-    plt.savefig(
-        OUTPUT_PATH
-        / f"group_{group_id}-mi_{mi}-yi_{yi}-mf_{mf}-yf_{yf}-ci_{ci}-cumulative_new_guardians.png"
-    )
+    plt.savefig(OUTPUT_PATH / f"group_{group_id}-mi_{mi}-yi_{yi}-mf_{mf}-yf_{yf}-ci_{ci}-cumulative_new_guardians.png")
 
     ########################################################################################################
 
@@ -143,9 +153,7 @@ def group_plot(group_id, mi, yi, mf, yf, ci, data=df):
     plt.figure(figsize=(22, 7))
     plt.plot(dates, cumulative_guardian_messages, color="r", label="guardian")
     plt.plot(dates, cumulative_moderator_messages, color="g", label="moderator")
-    plt.title(
-        f"Group {int(group_id)} - Cumulative messages from guardians and moderators"
-    )
+    plt.title(f"Group {int(group_id)} - Cumulative messages from guardians and moderators")
     plt.legend(bbox_to_anchor=(1.125, 1.15), loc="upper right")
 
     if ci:
@@ -159,9 +167,7 @@ def group_plot(group_id, mi, yi, mf, yf, ci, data=df):
 
         for iid in intervention_df["interventions_id"].dropna().unique():
 
-            timestamps = intervention_df[intervention_df["interventions_id"] == iid][
-                "sent_time"
-            ].values
+            timestamps = intervention_df[intervention_df["interventions_id"] == iid]["sent_time"].values
 
             plt.vlines(
                 x=timestamps,
@@ -184,10 +190,7 @@ def group_plot(group_id, mi, yi, mf, yf, ci, data=df):
             alpha=0.5,
         )
 
-    plt.savefig(
-        OUTPUT_PATH
-        / f"group_{group_id}-mi_{mi}-yi_{yi}-mf_{mf}-yf_{yf}-ci_{ci}-cumulative_messages.png"
-    )
+    plt.savefig(OUTPUT_PATH / f"group_{group_id}-mi_{mi}-yi_{yi}-mf_{mf}-yf_{yf}-ci_{ci}-cumulative_messages.png")
 
     ########################################################################################################
 
@@ -198,16 +201,10 @@ def group_plot(group_id, mi, yi, mf, yf, ci, data=df):
     color = cm.rainbow(np.linspace(0, 1, len(guardian_ids)))
 
     for i, c in zip(range(len(guardian_ids)), color):
-        cumulative_guardian_i_messages = np.cumsum(
-            df_group["guardian_id"] == guardian_ids[i]
-        ).values
-        plt.plot(
-            dates, cumulative_guardian_i_messages, color=c, label=int(guardian_ids[i])
-        )
+        cumulative_guardian_i_messages = np.cumsum(df_group["guardian_id"] == guardian_ids[i]).values
+        plt.plot(dates, cumulative_guardian_i_messages, color=c, label=int(guardian_ids[i]))
 
-    plt.title(
-        f"Group {int(group_id)} - Cumulative messages from all individual guardians"
-    )
+    plt.title(f"Group {int(group_id)} - Cumulative messages from all individual guardians")
     plt.legend(bbox_to_anchor=(1.125, 1.15), loc="upper right")
 
     if ci:
@@ -221,9 +218,7 @@ def group_plot(group_id, mi, yi, mf, yf, ci, data=df):
 
         for iid in intervention_df["interventions_id"].dropna().unique():
 
-            timestamps = intervention_df[intervention_df["interventions_id"] == iid][
-                "sent_time"
-            ].values
+            timestamps = intervention_df[intervention_df["interventions_id"] == iid]["sent_time"].values
 
             plt.vlines(
                 x=timestamps,
@@ -247,8 +242,7 @@ def group_plot(group_id, mi, yi, mf, yf, ci, data=df):
         )
 
     plt.savefig(
-        OUTPUT_PATH
-        / f"group_{group_id}-mi_{mi}-yi_{yi}-mf_{mf}-yf_{yf}-ci_{ci}-cumulative_individual_messages.png"
+        OUTPUT_PATH / f"group_{group_id}-mi_{mi}-yi_{yi}-mf_{mf}-yf_{yf}-ci_{ci}-cumulative_individual_messages.png"
     )
 
     ########################################################################################################

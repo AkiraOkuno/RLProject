@@ -4,7 +4,6 @@ import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
 
-
 DATA_PATH = pathlib.Path("data/processed")
 OUTPUT_PATH = pathlib.Path("outputs/statistics")
 OUTPUT_PATH.mkdir(parents=True, exist_ok=True)
