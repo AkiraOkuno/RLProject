@@ -2,6 +2,8 @@ import argparse
 import pathlib
 import random
 from datetime import datetime
+import os
+import sys
 
 import numpy as np
 import pandas as pd
@@ -9,6 +11,7 @@ from matplotlib import pyplot as plt
 from matplotlib.pyplot import cm
 from tqdm import tqdm
 
+sys.path.append(os.getcwd())
 from src.utils import general_utils
 
 parser = argparse.ArgumentParser()
@@ -23,7 +26,7 @@ parser.add_argument(
 parser.add_argument(
     "--initial_year",
     "-yi",
-    default=2022,
+    default=2021,
     help="Year to do analysis",
     type=int,
 )
@@ -89,7 +92,7 @@ df = df[
 ]
 
 
-def group_plot(group_id, mi, yi, mf, yf, ci, data=df):
+def group_plot(group_id, mi, yi, mf, yf, data=df):
 
     # filter group id
     df_group = data[data["groups_id"] == group_id]
@@ -103,11 +106,11 @@ def group_plot(group_id, mi, yi, mf, yf, ci, data=df):
 
     # calculate entry of new guardians
     cumulative_new_guardians = general_utils.cumulative_distinct_values(df_group["guardian_id"])
-    breakpoint()
+    
     plt.figure(figsize=(22, 7))
     plt.plot(dates, cumulative_new_guardians.values, color="r")
 
-    if ci:
+    if args.colored_interventions:
         # plot same interventions with same colors
 
         interventions = df_group["interventions_id"].unique()
@@ -142,7 +145,7 @@ def group_plot(group_id, mi, yi, mf, yf, ci, data=df):
         )
 
     plt.title(f"Group {int(group_id)} - Cumulative new guardians")
-    plt.savefig(OUTPUT_PATH / f"group_{group_id}-mi_{mi}-yi_{yi}-mf_{mf}-yf_{yf}-ci_{ci}-cumulative_new_guardians.png")
+    plt.savefig(OUTPUT_PATH / f"group_{group_id}-mi_{mi}-yi_{yi}-mf_{mf}-yf_{yf}-ci_{args.colored_interventions}-cumulative_new_guardians.png")
 
     ########################################################################################################
 
@@ -156,7 +159,7 @@ def group_plot(group_id, mi, yi, mf, yf, ci, data=df):
     plt.title(f"Group {int(group_id)} - Cumulative messages from guardians and moderators")
     plt.legend(bbox_to_anchor=(1.125, 1.15), loc="upper right")
 
-    if ci:
+    if args.colored_interventions:
         # plot same interventions with same colors
 
         interventions = df_group["interventions_id"].unique()
@@ -190,7 +193,7 @@ def group_plot(group_id, mi, yi, mf, yf, ci, data=df):
             alpha=0.5,
         )
 
-    plt.savefig(OUTPUT_PATH / f"group_{group_id}-mi_{mi}-yi_{yi}-mf_{mf}-yf_{yf}-ci_{ci}-cumulative_messages.png")
+    plt.savefig(OUTPUT_PATH / f"group_{group_id}-mi_{mi}-yi_{yi}-mf_{mf}-yf_{yf}-ci_{args.colored_interventions}-cumulative_messages.png")
 
     ########################################################################################################
 
@@ -207,7 +210,7 @@ def group_plot(group_id, mi, yi, mf, yf, ci, data=df):
     plt.title(f"Group {int(group_id)} - Cumulative messages from all individual guardians")
     plt.legend(bbox_to_anchor=(1.125, 1.15), loc="upper right")
 
-    if ci:
+    if args.colored_interventions:
         # plot same interventions with same colors
 
         interventions = df_group["interventions_id"].unique()
@@ -242,7 +245,7 @@ def group_plot(group_id, mi, yi, mf, yf, ci, data=df):
         )
 
     plt.savefig(
-        OUTPUT_PATH / f"group_{group_id}-mi_{mi}-yi_{yi}-mf_{mf}-yf_{yf}-ci_{ci}-cumulative_individual_messages.png"
+        OUTPUT_PATH / f"group_{group_id}-mi_{mi}-yi_{yi}-mf_{mf}-yf_{yf}-ci_{args.colored_interventions}-cumulative_individual_messages.png"
     )
 
     ########################################################################################################
@@ -254,7 +257,6 @@ if args.group_id:
         args.initial_month,
         args.initial_year,
         args.final_month,
-        args.colored_interventions,
         args.final_year,
     )
 
@@ -266,7 +268,6 @@ if args.random_groups:
             args.initial_month,
             args.initial_year,
             args.final_month,
-            args.colored_interventions,
             args.final_year,
         )
 
@@ -277,6 +278,5 @@ if args.all_groups:
             args.initial_month,
             args.initial_year,
             args.final_month,
-            args.colored_interventions,
             args.final_year,
         )
