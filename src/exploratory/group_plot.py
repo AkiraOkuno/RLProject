@@ -1,9 +1,9 @@
 import argparse
+import os
 import pathlib
 import random
-from datetime import datetime
-import os
 import sys
+from datetime import datetime
 
 import numpy as np
 import pandas as pd
@@ -106,7 +106,7 @@ def group_plot(group_id, mi, yi, mf, yf, data=df):
 
     # calculate entry of new guardians
     cumulative_new_guardians = general_utils.cumulative_distinct_values(df_group["guardian_id"])
-    
+
     plt.figure(figsize=(22, 7))
     plt.plot(dates, cumulative_new_guardians.values, color="r")
 
@@ -145,7 +145,10 @@ def group_plot(group_id, mi, yi, mf, yf, data=df):
         )
 
     plt.title(f"Group {int(group_id)} - Cumulative new guardians")
-    plt.savefig(OUTPUT_PATH / f"group_{group_id}-mi_{mi}-yi_{yi}-mf_{mf}-yf_{yf}-ci_{args.colored_interventions}-cumulative_new_guardians.png")
+    plt.savefig(
+        OUTPUT_PATH
+        / f"group_{group_id}-mi_{mi}-yi_{yi}-mf_{mf}-yf_{yf}-ci_{args.colored_interventions}-cumulative_new_guardians.png"
+    )
 
     ########################################################################################################
 
@@ -193,7 +196,10 @@ def group_plot(group_id, mi, yi, mf, yf, data=df):
             alpha=0.5,
         )
 
-    plt.savefig(OUTPUT_PATH / f"group_{group_id}-mi_{mi}-yi_{yi}-mf_{mf}-yf_{yf}-ci_{args.colored_interventions}-cumulative_messages.png")
+    plt.savefig(
+        OUTPUT_PATH
+        / f"group_{group_id}-mi_{mi}-yi_{yi}-mf_{mf}-yf_{yf}-ci_{args.colored_interventions}-cumulative_messages.png"
+    )
 
     ########################################################################################################
 
@@ -245,7 +251,8 @@ def group_plot(group_id, mi, yi, mf, yf, data=df):
         )
 
     plt.savefig(
-        OUTPUT_PATH / f"group_{group_id}-mi_{mi}-yi_{yi}-mf_{mf}-yf_{yf}-ci_{args.colored_interventions}-cumulative_individual_messages.png"
+        OUTPUT_PATH
+        / f"group_{group_id}-mi_{mi}-yi_{yi}-mf_{mf}-yf_{yf}-ci_{args.colored_interventions}-cumulative_individual_messages.png"
     )
 
     ########################################################################################################
