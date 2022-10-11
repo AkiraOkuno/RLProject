@@ -5,7 +5,9 @@ import time
 
 import numpy as np
 import pandas as pd
+import plotly.express as px
 from matplotlib import pyplot as plt
+from tqdm import tqdm
 
 parser = argparse.ArgumentParser()
 
@@ -112,7 +114,75 @@ print(df_guardian_responses.groupby("DA_count")["n_guardian_responses"].mean())
 
 ######################################################################################################################
 
-for gid in random.sample(list(dfda["groups_id"].dropna().unique()), args.random_groups):
+# group temporal analysis with polar plots
+
+df_guardian["sent_day"] = df_guardian["sent_time"].dt.day
+df_guardian["sent_dayofweek"] = df_guardian["sent_time"].dt.dayofweek
+df_guardian["sent_date"] = pd.to_datetime(df_guardian["sent_time"].dt.date)
+df_guardian["sent_hr"] = df_guardian["sent_time"].dt.hour
+df_guardian["sent_month"] = df_guardian["sent_time"].dt.month
+df_guardian["sent_week"] = df_guardian["sent_time"].dt.week
+
+for gid in tqdm(random.sample(list(df_guardian["groups_id"].dropna().unique()), args.random_groups)):
+
+    dfg = df_guardian[df_guardian["groups_id"] == gid]
+
+    # how many unique guardians respond in a day at at given hour on average:
+    df_hour = (
+        dfg.groupby(["sent_date", "sent_hr"])["guardian_id"]
+        .nunique()
+        .reset_index()
+        .groupby("sent_hr")["guardian_id"]
+        .mean()
+        .reset_index()
+    )
+    df_hour["sent_hr"] = df_hour["sent_hr"].astype(str)
+
+    fig = px.line_polar(df_hour, r="guardian_id", theta="sent_hr", line_close=True)
+    fig.update_polars(angularaxis_type="category")
+    fig.update_traces(fill="toself")
+    fig.update_layout(title_text=f"Group {gid} - Hourly guardian response average - n={dfg.shape[0]}", title_x=0.5)
+
+    print(PLOTS_PATH / f"group_{gid}-hourly_polar_plot.png")
+    fig.write_image(PLOTS_PATH / f"group_{gid}-hourly_polar_plot.png")
+
+    df_month = (
+        dfg.groupby(["sent_date", "sent_month"])["guardian_id"]
+        .nunique()
+        .reset_index()
+        .groupby("sent_month")["guardian_id"]
+        .mean()
+        .reset_index()
+    )
+    df_month["sent_month"] = df_month["sent_month"].astype(str)
+
+    fig = px.line_polar(df_month, r="guardian_id", theta="sent_month", line_close=True)
+    fig.update_polars(angularaxis_type="category")
+    fig.update_traces(fill="toself")
+    fig.update_layout(title_text=f"Group {gid} - Monthly guardian response average - n={dfg.shape[0]}", title_x=0.5)
+
+    print(PLOTS_PATH / f"group_{gid}-monthly_polar_plot.png")
+    fig.write_image(PLOTS_PATH / f"group_{gid}-monthly_polar_plot.png")
+
+    df_weekday = (
+        dfg.groupby(["sent_date", "sent_dayofweek"])["guardian_id"]
+        .nunique()
+        .reset_index()
+        .groupby("sent_dayofweek")["guardian_id"]
+        .mean()
+        .reset_index()
+    )
+    df_weekday["sent_dayofweek"] = df_weekday["sent_dayofweek"].astype(str)
+
+    fig = px.line_polar(df_weekday, r="guardian_id", theta="sent_dayofweek", line_close=True)
+    fig.update_polars(angularaxis_type="category")
+    fig.update_traces(fill="toself")
+    fig.update_layout(title_text=f"Group {gid} - Weekday guardian response average - n={dfg.shape[0]}", title_x=0.5)
+
+    print(PLOTS_PATH / f"group_{gid}-weekday_polar_plot.png")
+    fig.write_image(PLOTS_PATH / f"group_{gid}-weekday_polar_plot.png")
+
+    ######################################################################################################################
 
     dfg = dfda[dfda["groups_id"] == gid]
 
