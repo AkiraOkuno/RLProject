@@ -195,6 +195,14 @@ optional = false
 python-versions = ">=3.7"
 
 [[package]]
+name = "kaleido"
+version = "0.2.1"
+description = "Static image export for web-based visualization libraries with zero dependencies"
+category = "main"
+optional = false
+python-versions = "*"
+
+[[package]]
 name = "kiwisolver"
 version = "1.4.4"
 description = "A fast implementation of the Cassowary constraint solver"
@@ -358,6 +366,17 @@ python-versions = ">=3.7"
 [package.extras]
 docs = ["furo (>=2021.7.5b38)", "proselint (>=0.10.2)", "sphinx-autodoc-typehints (>=1.12)", "sphinx (>=4)"]
 test = ["appdirs (==1.4.4)", "pytest-cov (>=2.7)", "pytest-mock (>=3.6)", "pytest (>=6)"]
+
+[[package]]
+name = "plotly"
+version = "5.10.0"
+description = "An open-source, interactive data visualization library for Python"
+category = "main"
+optional = false
+python-versions = ">=3.6"
+
+[package.dependencies]
+tenacity = ">=6.2.0"
 
 [[package]]
 name = "pluggy"
@@ -575,6 +594,17 @@ develop = ["cython (>=0.29.26)"]
 docs = ["sphinx", "nbconvert", "jupyter-client", "ipykernel", "matplotlib", "nbformat", "numpydoc", "pandas-datareader"]
 
 [[package]]
+name = "tenacity"
+version = "8.1.0"
+description = "Retry code until it succeeds"
+category = "main"
+optional = false
+python-versions = ">=3.6"
+
+[package.extras]
+doc = ["reno", "sphinx", "tornado (>=4.5)"]
+
+[[package]]
 name = "threadpoolctl"
 version = "3.1.0"
 description = "threadpoolctl"
@@ -664,7 +694,7 @@ testing = ["coverage (>=5.0.3)", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.10"
-content-hash = "ea5dd75293655c5481ae20234c484c9e89bc61bb85c868edf45f414f6393e50e"
+content-hash = "1efa46116b6560669e7444929379f30fcc54d76c37dd9004a41cf1227c110e8b"
 
 [metadata.files]
 atomicwrites = []
@@ -683,6 +713,7 @@ fonttools = []
 identify = []
 isort = []
 joblib = []
+kaleido = []
 kiwisolver = []
 matplotlib = []
 mccabe = []
@@ -698,6 +729,7 @@ pathspec = []
 patsy = []
 pillow = []
 platformdirs = []
+plotly = []
 pluggy = []
 pre-commit = []
 py = []
@@ -715,6 +747,7 @@ setuptools-scm = []
 six = []
 sklearn = []
 statsmodels = []
+tenacity = []
 threadpoolctl = []
 toml = []
 tomli = []
