@@ -58,7 +58,13 @@ df["current_intervention_type"] = df["intervention_type"].fillna(method="ffill")
 df_guardian = df[df["action"] == "guardian"]
 
 group_ids = df_guardian["groups_id"].dropna().unique()
-selected_group_ids = random.sample(list(group_ids), args.random_groups)
+
+if args.random_groups:
+    selected_group_ids = random.sample(list(group_ids), args.random_groups)
+elif args.group_id:
+    selected_group_ids = [args.group_id]
+else:
+    raise ValueError("Group choice method not implemented yet")
 
 for gid in selected_group_ids:
 
