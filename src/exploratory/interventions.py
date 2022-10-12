@@ -11,10 +11,17 @@ from tqdm import tqdm
 
 parser = argparse.ArgumentParser()
 
-parser.add_argument(
+group = parser.add_mutually_exclusive_group()
+group.add_argument(
+    "--group_id",
+    "-g",
+    default=29782,
+    help="Group id to do analysis",
+    type=int,
+)
+group.add_argument(
     "--random_groups",
     "-rg",
-    default=5,
     help="Number of random group ids to do analysis",
     type=int,
 )
@@ -123,7 +130,14 @@ df_guardian["sent_hr"] = df_guardian["sent_time"].dt.hour
 df_guardian["sent_month"] = df_guardian["sent_time"].dt.month
 df_guardian["sent_week"] = df_guardian["sent_time"].dt.week
 
-for gid in tqdm(random.sample(list(df_guardian["groups_id"].dropna().unique()), args.random_groups)):
+if args.random_groups:
+    selected_group_ids = random.sample(list(df_guardian["groups_id"].dropna().unique()), args.random_groups)
+elif args.group_id:
+    selected_group_ids = [args.group_id]
+else:
+    raise ValueError("Group choice method not implemented yet")
+
+for gid in tqdm(selected_group_ids):
 
     dfg = df_guardian[df_guardian["groups_id"] == gid]
 
