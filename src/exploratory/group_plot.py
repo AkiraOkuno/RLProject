@@ -3,6 +3,7 @@ import os
 import pathlib
 import random
 import sys
+import time
 from datetime import datetime
 
 import numpy as np
@@ -33,7 +34,7 @@ parser.add_argument(
 parser.add_argument(
     "--final_month",
     "-mf",
-    default=2,
+    default=10,
     help="Month to do analysis",
     type=int,
 )
@@ -255,6 +256,8 @@ def group_plot(group_id, mi, yi, mf, yf, data=df):
         / f"group_{group_id}-mi_{mi}-yi_{yi}-mf_{mf}-yf_{yf}-ci_{args.colored_interventions}-cumulative_individual_messages.png"
     )
 
+    time.sleep(0.1)
+
     ########################################################################################################
 
 
@@ -269,7 +272,7 @@ if args.group_id:
 
 # plot random groups if flag random_groups is active
 if args.random_groups:
-    for gid in random.sample(list(df["groups_id"].unique()), args.random_groups):
+    for gid in tqdm(random.sample(list(df["groups_id"].unique()), args.random_groups)):
         group_plot(
             gid,
             args.initial_month,
