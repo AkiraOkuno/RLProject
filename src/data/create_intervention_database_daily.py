@@ -1,5 +1,7 @@
 import argparse
+import os
 import pathlib
+import sys
 from datetime import timedelta
 
 import matplotlib.pyplot as plt
@@ -8,16 +10,8 @@ import pandas as pd
 import statsmodels.api as sm
 from tqdm import tqdm
 
-parser = argparse.ArgumentParser()
-
-parser.add_argument(
-    "--group_id",
-    "-g",
-    default=17824,
-    help="Group id to do analysis",
-    type=int,
-)
-args = parser.parse_args()
+sys.path.append(os.getcwd())
+from src.utils import general_utils
 
 DATA_PATH = pathlib.Path("data/processed")
 OUTPUT_PATH = pathlib.Path("outputs/databases")
@@ -38,38 +32,44 @@ df["sent_day"] = pd.to_datetime(df["sent_time"].dt.strftime("%Y-%m-%d"))
 
 intervention_types = df["intervention_type"].dropna().unique()
 
-# filter only specific group
-dfg = df[df["groups_id"] == args.group_id]
-df_guardian = dfg[dfg["action"] == "guardian"]
-
 X = []
 
-for day in tqdm(sorted(dfg["sent_day"].unique())):
+for gid in tqdm(df["groups_id"].dropna().unique()):
 
-    output = []
-    output.append(day)
+    # filter only specific group
+    dfg = df[df["groups_id"] == gid]
+    df_guardian = dfg[dfg["action"] == "guardian"]
 
-    dfday = dfg[dfg["sent_day"] == day]
+    for day in sorted(dfg["sent_day"].unique()):
 
-    n_guardians = dfday["guardian_id"].dropna().nunique()
-    output.append(n_guardians)
+        output = []
+        output.append(gid)
+        output.append(day)
 
-    day_interventions = set(dfday["intervention_type"].dropna().unique())
+        dfday = dfg[dfg["sent_day"] == day]
 
-    for type in intervention_types:
-        output.append(type in day_interventions)
+        n_guardians = dfday["guardian_id"].dropna().nunique()
+        output.append(n_guardians)
 
-    da_intervention_hours = dfday[dfday["intervention_type"] == "DA"]["sent_time"].dt.hour.unique().tolist()
-    output.append(da_intervention_hours)
+        guardian_ids = dfday["guardian_id"].dropna().unique().tolist()
+        output.append(guardian_ids)
 
-    n_moderator_messages = dfday[dfday["action"] == "moderator"].shape[0]
-    n_distinct_moderators = len(dfday["moderator_id"].dropna().unique())
-    output.extend([n_moderator_messages, n_distinct_moderators])
+        day_interventions = set(dfday["intervention_type"].dropna().unique())
 
-    X.append(output)
+        for type in intervention_types:
+            output.append(type in day_interventions)
+
+        da_intervention_hours = dfday[dfday["intervention_type"] == "DA"]["sent_time"].dt.hour.unique().tolist()
+        output.append(da_intervention_hours)
+
+        n_moderator_messages = dfday[dfday["action"] == "moderator"].shape[0]
+        n_distinct_moderators = len(dfday["moderator_id"].dropna().unique())
+        output.extend([n_moderator_messages, n_distinct_moderators])
+
+        X.append(output)
 
 X = pd.DataFrame(X)
-colnames = ["sent_day", "n_guardians"]
+colnames = ["group_id", "sent_day", "n_guardians", "guardian_ids"]
 colnames.extend(intervention_types)
 colnames.extend(["DA_intervention_hours", "n_moderator_messages", "n_distinct_moderators"])
 X.columns = colnames
@@ -79,7 +79,11 @@ X = pd.concat([X, df_hour_dummies], axis=1).fillna(0)
 
 X["weekday"] = X["sent_day"].dt.weekday
 
-# simple stats
+general_utils.save_pickle(X, OUTPUT_PATH / "daily_features_database.pickle")
+
+breakpoint()
+
+# simple stats -> NEED TO GO TO ANOTHER SCRIPT
 X[X["DA"] is True]["n_guardians"].mean()
 
 X[X["DA"] is False]["n_guardians"].mean()
@@ -91,5 +95,3 @@ X.groupby("n_moderator_messages_mod10")["n_guardians"].mean()
 
 for type in intervention_types:
     X.groupby(type)["n_guardians"].mean()
-
-breakpoint()
