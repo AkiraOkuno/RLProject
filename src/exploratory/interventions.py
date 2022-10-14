@@ -64,6 +64,8 @@ df_guardian["sent_day"] = df_guardian["sent_time"].dt.strftime("%Y-%m-%d")
 
 df_interventions["sent_time"] = pd.to_datetime(df_interventions["sent_time"])
 df_interventions["sent_day"] = df_interventions["sent_time"].dt.strftime("%Y-%m-%d")
+df_interventions["sent_hr"] = df_interventions["sent_time"].dt.hour.astype(str)
+df_interventions["sent_date"] = pd.to_datetime(df_interventions["sent_time"].dt.date)
 
 df_guardian = df_guardian.sort_values(["groups_id", "sent_time"])
 df_interventions = df_interventions.sort_values(["groups_id", "sent_time"])
@@ -152,13 +154,36 @@ for gid in tqdm(selected_group_ids):
     )
     df_hour["sent_hr"] = df_hour["sent_hr"].astype(str)
 
-    fig = px.line_polar(df_hour, r="guardian_id", theta="sent_hr", line_close=True)
+    dfg_interventions = df_interventions[df_interventions["groups_id"] == gid]
+    dfg_da = dfg_interventions[dfg_interventions["intervention_type"] == "DA"]
+    hour_distribution = (
+        dfg_da.groupby(["sent_date", "sent_hr"]).size().reset_index()["sent_hr"].value_counts(normalize=True)
+    )
+    hour_distribution = hour_distribution / hour_distribution.max()
+    hour_distribution = hour_distribution.reset_index()
+
+    hour_distribution.columns = ["sent_hr", "weight"]
+
+    # complete possibly missing hours with zero in hour_distribution
+    hour_distribution = df_hour.merge(hour_distribution, on="sent_hr", how="left").fillna(0)[["sent_hr", "weight"]]
+
+    # rename weight to guardian id just to match column names with guardian data
+    hour_distribution.columns = ["sent_hr", "guardian_id"]
+    hour_distribution["type"] = "DA intervention"
+
+    df_hour["type"] = "guardian"
+
+    df_concat = pd.concat([df_hour, hour_distribution])
+
+    fig = px.line_polar(df_concat, r="guardian_id", theta="sent_hr", color="type", line_close=True)
     fig.update_polars(angularaxis_type="category")
     fig.update_traces(fill="toself")
     fig.update_layout(title_text=f"Group {gid} - Hourly guardian response average - n={dfg.shape[0]}", title_x=0.5)
 
     print(PLOTS_PATH / f"group_{gid}-hourly_polar_plot.png")
     fig.write_image(PLOTS_PATH / f"group_{gid}-hourly_polar_plot.png")
+
+    df_hour = df_hour.drop(columns=["type"])
 
     df_month = (
         dfg.groupby(["sent_date", "sent_month"])["guardian_id"]
