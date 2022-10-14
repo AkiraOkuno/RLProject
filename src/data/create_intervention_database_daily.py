@@ -51,8 +51,11 @@ for gid in tqdm(df["groups_id"].dropna().unique()):
         n_guardians = dfday["guardian_id"].dropna().nunique()
         output.append(n_guardians)
 
-        guardian_ids = dfday["guardian_id"].dropna().unique().tolist()
+        # ensure to save guardian ids in order of response
+        guardian_ids = dfday.sort_values("sent_time")["guardian_id"].dropna().unique().tolist()
+        guardian_ids_full_history = dfday.sort_values("sent_time")["guardian_id"].dropna().tolist()
         output.append(guardian_ids)
+        output.append(guardian_ids_full_history)
 
         day_interventions = set(dfday["intervention_type"].dropna().unique())
 
@@ -69,7 +72,7 @@ for gid in tqdm(df["groups_id"].dropna().unique()):
         X.append(output)
 
 X = pd.DataFrame(X)
-colnames = ["group_id", "sent_day", "n_guardians", "guardian_ids"]
+colnames = ["group_id", "sent_day", "n_guardians", "guardian_ids", "guardian_ids_history"]
 colnames.extend(intervention_types)
 colnames.extend(["DA_intervention_hours", "n_moderator_messages", "n_distinct_moderators"])
 X.columns = colnames
