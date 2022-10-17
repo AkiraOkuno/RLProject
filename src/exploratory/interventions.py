@@ -1,6 +1,8 @@
 import argparse
+import os
 import pathlib
 import random
+import sys
 import time
 
 import numpy as np
@@ -8,6 +10,9 @@ import pandas as pd
 import plotly.express as px
 from matplotlib import pyplot as plt
 from tqdm import tqdm
+
+sys.path.append(os.getcwd())
+from src.utils import general_utils
 
 parser = argparse.ArgumentParser()
 
@@ -55,8 +60,8 @@ def n_distant_interventions(x: pd.Series):
 
 
 # import data
-df_interventions = pd.read_csv(DATA_PATH / "df_interventions.csv")
-df_guardian = pd.read_csv(DATA_PATH / "df_guardian.csv")
+df_interventions = general_utils.open_pickle(DATA_PATH / "df_interventions.pickle")
+df_guardian = general_utils.open_pickle(DATA_PATH / "df_guardian.pickle")
 
 # preprocessing
 df_guardian["sent_time"] = pd.to_datetime(df_guardian["sent_time"])

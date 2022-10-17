@@ -1,12 +1,17 @@
 import argparse
+import os
 import pathlib
 import random
+import sys
 
 import networkx as nx
 import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
 from tqdm import tqdm
+
+sys.path.append(os.getcwd())
+from src.utils import general_utils
 
 parser = argparse.ArgumentParser()
 
@@ -43,7 +48,7 @@ OUTPUT_PATH = pathlib.Path("outputs/plots/graphs")
 OUTPUT_PATH.mkdir(parents=True, exist_ok=True)
 
 
-df = pd.read_csv(DATA_PATH / "df_merge.csv")
+df = general_utils.open_pickle(DATA_PATH / "df_merge.pickle")
 
 df["sent_time"] = pd.to_datetime(df["sent_time"])
 df["guardian_id"] = df["guardian_id"].astype("Int64")

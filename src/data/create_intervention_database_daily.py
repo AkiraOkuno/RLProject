@@ -2,12 +2,9 @@ import argparse
 import os
 import pathlib
 import sys
-from datetime import timedelta
 
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import statsmodels.api as sm
 from tqdm import tqdm
 
 sys.path.append(os.getcwd())
@@ -17,7 +14,7 @@ DATA_PATH = pathlib.Path("data/processed")
 OUTPUT_PATH = pathlib.Path("outputs/databases")
 OUTPUT_PATH.mkdir(parents=True, exist_ok=True)
 
-df = pd.read_csv(DATA_PATH / "df_merge.csv")
+df = general_utils.open_pickle(DATA_PATH / "df_merge.pickle")
 
 df["sent_time"] = pd.to_datetime(df["sent_time"])
 df["guardian_id"] = df["guardian_id"].astype("Int64")
@@ -77,8 +74,8 @@ colnames.extend(intervention_types)
 colnames.extend(["DA_intervention_hours", "n_moderator_messages", "n_distinct_moderators"])
 X.columns = colnames
 
-df_hour_dummies = pd.get_dummies(X["DA_intervention_hours"].apply(pd.Series).stack()).sum(level=0)
-X = pd.concat([X, df_hour_dummies], axis=1).fillna(0)
+# df_hour_dummies = pd.get_dummies(X["DA_intervention_hours"].apply(pd.Series).stack()).sum(level=0)
+# X = pd.concat([X, df_hour_dummies], axis=1).fillna(0)
 
 X["weekday"] = X["sent_day"].dt.weekday
 

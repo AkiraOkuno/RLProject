@@ -77,7 +77,7 @@ DATA_PATH = pathlib.Path("data/processed")
 OUTPUT_PATH = pathlib.Path("outputs/plots/timelines")
 OUTPUT_PATH.mkdir(parents=True, exist_ok=True)
 
-df = pd.read_csv(DATA_PATH / "df_merge.csv")
+df = general_utils.open_pickle(DATA_PATH / "df_merge.pickle")
 
 df["sent_time"] = pd.to_datetime(df["sent_time"])
 
