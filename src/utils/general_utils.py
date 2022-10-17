@@ -24,3 +24,12 @@ def open_pickle(path):
     with open(path, "rb") as f:
         output = pickle.load(f)
     return output
+
+
+def normalize(df, cols):
+    df_normalized = df.copy()
+    for feature_name in cols:
+        max_value = df[feature_name].max()
+        min_value = df[feature_name].min()
+        df_normalized[feature_name] = (df[feature_name] - min_value) / (max_value - min_value)
+    return df_normalized
