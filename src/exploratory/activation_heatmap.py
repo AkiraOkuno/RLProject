@@ -51,9 +51,19 @@ elif args.group_id:
 else:
     raise ValueError("Group choice method not implemented yet")
 
-intervention_types = df.columns[4:12].tolist()
+intervention_types = [
+    "Other",
+    "DA",
+    "NR",
+    "SV",
+    "FM",
+    "GroupReportCard",
+    "CreateVideoCompilation",
+    "ManualCertificate",
+    "QF",
+]
 
-for group in selected_group_ids:
+for group in tqdm(selected_group_ids):
 
     dfg = df[df["group_id"] == group]
 
@@ -107,7 +117,7 @@ for group in selected_group_ids:
 
         fig, ax = plt.subplots(figsize=(xsize, ysize))
 
-        sns.heatmap(group_matrix, center=0, cmap="vlag", linewidths=0.75, ax=ax, square=True, vmin=0)
+        sns.heatmap(group_matrix, center=0, cmap="vlag", linewidths=0.75, ax=ax, square=True, vmin=0, vmax=1)
 
         ax.set_xticklabels(guardian_ids)
         ax.set_yticklabels(intervention_types)
