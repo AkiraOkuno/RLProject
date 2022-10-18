@@ -5,6 +5,7 @@ import random
 import sys
 import time
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import statsmodels.api as sm
@@ -14,7 +15,7 @@ sys.path.append(os.getcwd())
 from src.utils import general_utils
 
 DATABASES_PATH = pathlib.Path("outputs/databases")
-OUTPUT_PATH = pathlib.Path("outputs/models")
+OUTPUT_PATH = pathlib.Path("outputs/models/daily_outcome_model")
 OUTPUT_PATH.mkdir(parents=True, exist_ok=True)
 
 parser = argparse.ArgumentParser()
@@ -25,12 +26,17 @@ parser.add_argument(
     action="store_true",
     help="Whether to remove entries in 2022 from analysis",
 )
+parser.add_argument(
+    "--write",
+    "-w",
+    action="store_true",
+    help="Whether to write regression summary to output file",
+)
 
 group = parser.add_mutually_exclusive_group()
 group.add_argument(
     "--group_id",
     "-g",
-    default=29782,
     help="Group id to do analysis",
     type=int,
 )
@@ -40,7 +46,12 @@ group.add_argument(
     help="Number of random group ids to do analysis",
     type=int,
 )
-
+group.add_argument(
+    "--all_groups",
+    "-ag",
+    help="Use all groups for analysis",
+    action="store_true",
+)
 args = parser.parse_args()
 
 df_daily = general_utils.open_pickle(DATABASES_PATH / "daily_features_database.pickle")
@@ -55,8 +66,34 @@ if args.random_groups:
     selected_group_ids = random.sample(list(group_ids), args.random_groups)
 elif args.group_id:
     selected_group_ids = [args.group_id]
+elif args.all_groups:
+    selected_group_ids = list(group_ids)
 else:
     raise ValueError("Group choice method not implemented yet")
+
+# dictionary for saving each feature parameter estimate
+features = [
+    "Other",
+    "DA",
+    "NR",
+    "SV",
+    "FM",
+    "GroupReportCard",
+    "CreateVideoCompilation",
+    "ManualCertificate",
+    "QF",
+    "n_moderator_messages",
+    "n_distinct_moderators",
+    "0-2",
+    "3-5",
+    "6-8",
+    "9-11",
+    "12-14",
+    "15-17",
+    "18-20",
+    "21-23",
+]
+parameter_dict = {key: [] for key in features}
 
 for gid in tqdm(selected_group_ids):
 
@@ -72,7 +109,7 @@ for gid in tqdm(selected_group_ids):
     # calculate hour dummies and discretize by 3 hour intervals
     df_hour = pd.get_dummies(dfg["DA_intervention_hours"].apply(pd.Series).stack()).sum(level=0)
 
-    for h in range(23):
+    for h in range(24):
         if h not in df_hour.columns:
             df_hour[h] = 0
 
@@ -114,6 +151,7 @@ for gid in tqdm(selected_group_ids):
             "DA_intervention_hours",
             "weekday",
             "0-2",
+            "daily_total_messages",
         ]
     )
 
@@ -128,9 +166,23 @@ for gid in tqdm(selected_group_ids):
 
     reg = sm.OLS(y, X).fit()
 
-    with open(OUTPUT_PATH / "daily_outcome_model.txt", "a+") as f:  # a+
+    with open(OUTPUT_PATH / "regression_output.txt", "a+") as f:  # a+
         f.write(f"Group {gid} regression results:\n\n")
         f.write(reg.summary().as_text())
         f.write("\n==============================================================================\n\n")
 
-    time.sleep(0.1)
+    # save parameter values to dict, only for pvalue < 0.1
+    for key in reg.params.index:
+        if reg.pvalues[key] < 0.1 and key != "constant":
+            parameter_dict[key].append(reg.params[key])
+
+# save parameter dict pickle
+general_utils.save_pickle(parameter_dict, OUTPUT_PATH / "parameter_dict.pickle")
+
+# plot histogram of parameters
+for key in parameter_dict.keys():
+
+    plt.hist(parameter_dict[key])
+    plt.title(f"{key}: parameter histogram")
+    plt.savefig(OUTPUT_PATH / f"{key}-histogram.png")
+    plt.close()
