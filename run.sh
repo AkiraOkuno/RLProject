@@ -32,4 +32,8 @@ python src/data/create_intervention_database_daily.py
 echo "Generating heatmap plots..."
 python src/exploratory/activation_heatmap.py -rg 10
 
+# run models for daily outcome model, i.e. outcome is daily total guardians that interacted
+# run for all groups (-ag) and write output to file (-w)
+python src/models/activation_regression_daily_outcome.py -ag -w
+
 
