@@ -4,7 +4,9 @@ import os
 import pathlib
 import sys
 
+import numpy as np
 import pandas as pd
+from tqdm import tqdm
 
 sys.path.append(os.getcwd())
 from src.utils import general_utils
@@ -66,6 +68,48 @@ df = df.sort_values("sent_time")
 # reset indexes
 df = df.reset_index(drop=True)
 
+# process basic features from df_guardians_date_left
+dfl = pd.read_json(RAW_PATH / "df_guardians_date_left_22.json")
+dfl_processed = pd.DataFrame()
+
+for gid in tqdm(dfl["groups_id"].dropna().unique()):
+
+    dfg = dfl[dfl["groups_id"] == gid]
+    dfg = dfg.sort_values(["date_joined"])
+    dfg["current_size"] = range(1, dfg.shape[0] + 1)
+    dfg["current_members"] = dfg["guardian_id"].map(lambda x: [x]).cumsum().apply(set)
+
+    for row in dfg[["date_left", "guardian_id"]].dropna().iterrows():
+
+        date = row[1]["date_left"]
+        guardian = set([row[1]["guardian_id"]])
+
+        dfg.loc[dfg["date_joined"] >= date, "current_size"] -= 1
+        dfg.loc[dfg["date_joined"] >= date, "current_members"] -= guardian
+
+        # add a new row for the dates where guardians left
+        # pickup from last date before they left and update the information
+        last_date_row = dfg.loc[dfg["date_joined"] <= date, :].values[-1].tolist()
+
+        # update date
+        last_date_row[2] = date
+
+        # update current size
+        last_date_row[5] -= 1
+
+        # update current_members
+        last_date_row[-1] -= guardian
+
+        # append to dataframe
+        dfg = dfg.append(dict(zip(dfg.columns, last_date_row)), ignore_index=True)
+
+    dfl_processed = pd.concat([dfl_processed, dfg])
+
+# finish preprocessing details
+dfl_processed = dfl_processed.sort_values(["groups_id", "date_joined"])
+dfl_processed = dfl_processed.drop(columns=["guardian_id", "date_left", "organization_id"])
+dfl_processed = dfl_processed.rename({"date_joined": "date"}, axis=1)
+
 print("Saving data...")
 
 # save to processed folder
@@ -74,11 +118,13 @@ if args.pickle:
     general_utils.save_pickle(df_moderator, OUTPUT_PATH / "df_moderator.pickle")
     general_utils.save_pickle(df_guardian, OUTPUT_PATH / "df_guardian.pickle")
     general_utils.save_pickle(df, OUTPUT_PATH / "df_merge.pickle")
+    general_utils.save_pickle(dfl_processed, OUTPUT_PATH / "df_ins_and_outs.pickle")
 
 if args.csv:
     df_interventions.to_csv(OUTPUT_PATH / "df_interventions.csv", index=False)
     df_moderator.to_csv(OUTPUT_PATH / "df_moderator.csv", index=False)
     df_guardian.to_csv(OUTPUT_PATH / "df_guardian.csv", index=False)
     df.to_csv(OUTPUT_PATH / "df_merge.csv", index=False)
+    dfl_processed.to_csv(OUTPUT_PATH / "df_ins_and_outs.csv", index=False)
 
 print("Done!\n")

@@ -182,7 +182,7 @@ general_utils.save_pickle(parameter_dict, OUTPUT_PATH / "parameter_dict.pickle")
 # plot histogram of parameters
 for key in parameter_dict.keys():
 
-    plt.hist(parameter_dict[key])
+    plt.hist(parameter_dict[key], bins=20)
     plt.title(f"{key}: parameter histogram")
     plt.savefig(OUTPUT_PATH / f"{key}-histogram.png")
     plt.close()
