@@ -32,6 +32,11 @@ parser.add_argument(
     action="store_true",
     help="Whether to write regression summary to output file",
 )
+parser.add_argument(
+    "--all",
+    action="store_true",
+    help="Whether to run a regression of full data",
+)
 
 group = parser.add_mutually_exclusive_group()
 group.add_argument(
@@ -60,17 +65,6 @@ df_daily = general_utils.open_pickle(DATABASES_PATH / "daily_features_database.p
 if args.remove_2022:
     df_daily = df_daily[df_daily["sent_day"].dt.year == 2021]
 
-group_ids = df_daily["group_id"].dropna().unique()
-
-if args.random_groups:
-    selected_group_ids = random.sample(list(group_ids), args.random_groups)
-elif args.group_id:
-    selected_group_ids = [args.group_id]
-elif args.all_groups:
-    selected_group_ids = list(group_ids)
-else:
-    raise ValueError("Group choice method not implemented yet")
-
 # dictionary for saving each feature parameter estimate
 features = [
     "Other",
@@ -93,6 +87,101 @@ features = [
     "18-20",
     "21-23",
 ]
+
+if args.all:
+    
+    dfa = df_daily.copy()
+    dfa["daily_total_messages"] = dfa["guardian_ids_history"].apply(len)
+
+    df_hour = pd.get_dummies(dfa["DA_intervention_hours"].apply(pd.Series).stack()).sum(level=0)
+
+    for h in range(24):
+        if h not in df_hour.columns:
+            df_hour[h] = 0
+
+    for h in range(8):
+        
+        col = f"{3*h}-{3*h+2}"
+        dfa[col] = 0
+
+        for i in range(3):
+
+            if df_hour.shape[0] > 0:
+
+                dfa[col] += df_hour[3 * h + i]
+
+                # fill nas with 0, i.e. all hour values are 0 for days without interventions
+                dfa[col] = dfa[col].fillna(0)
+
+            else:
+                # if there is no intervention in the whole period
+                dfa[col] = 0
+
+        # map non zeroes to 1
+        dfa[col] = dfa[col].astype(bool).astype(int)
+
+    intervention_values = dfa[dfa.columns[5:14]].sum().values
+    top5_interventions = dfa.columns[5:14][intervention_values.argsort()[-5:][::-1]]
+    remove = [col for col in dfa.columns[5:14] if col not in top5_interventions]
+
+    # daily outcome regression
+    y = dfa["n_guardians"]
+
+    X = dfa.drop(columns=remove)
+    X = X.drop(
+        columns=[
+            "n_guardians",
+            "sent_day",
+            "guardian_ids",
+            "guardian_ids_history",
+            "DA_intervention_hours",
+            "weekday",
+            "21-23",
+            "daily_total_messages",
+            "language", 
+            "activity_type",
+            "difficulty_level", 
+            "response_type", 
+            "audience", 
+            "learning_domain",
+        ]
+    )
+
+    for col in X.columns:
+        X[col] = X[col].astype(int)
+
+    # delete possible only 0 columns
+    X = X.loc[:, (X != 0).any(axis=0)]
+
+    # add group fixed effects
+    X = pd.get_dummies(X, columns=['group_id'],drop_first=True)
+
+    # add constant to model
+    X["constant"] = 1
+
+    ####
+    gid_count = X[[col for col in X.columns if col[:8]=="group_id"]].sum(axis=0)
+    gid_remove = gid_count[gid_count < np.quantile(gid_count,0.8)].index.tolist()
+
+    #X = X.drop(columns=gid_remove)
+    breakpoint()
+    reg = sm.OLS(y, X.drop(columns=gid_remove)).fit()
+
+#################################################################################
+
+# GROUP LEVEL REGRESSION
+
+group_ids = df_daily["group_id"].dropna().unique()
+
+if args.random_groups:
+    selected_group_ids = random.sample(list(group_ids), args.random_groups)
+elif args.group_id:
+    selected_group_ids = [args.group_id]
+elif args.all_groups:
+    selected_group_ids = list(group_ids)
+else:
+    raise ValueError("Group choice method not implemented yet")
+
 parameter_dict = {key: [] for key in features}
 
 for gid in tqdm(selected_group_ids):
@@ -150,7 +239,7 @@ for gid in tqdm(selected_group_ids):
             "guardian_ids_history",
             "DA_intervention_hours",
             "weekday",
-            "0-2",
+            "21-23",
             "daily_total_messages",
         ]
     )
@@ -186,3 +275,5 @@ for key in parameter_dict.keys():
     plt.title(f"{key}: parameter histogram")
     plt.savefig(OUTPUT_PATH / f"{key}-histogram.png")
     plt.close()
+
+# FULL DATA regression
