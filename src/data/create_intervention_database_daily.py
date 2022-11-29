@@ -15,6 +15,7 @@ OUTPUT_PATH = pathlib.Path("outputs/databases")
 OUTPUT_PATH.mkdir(parents=True, exist_ok=True)
 
 df = general_utils.open_pickle(DATA_PATH / "df_merge.pickle")
+dfa = general_utils.open_pickle(DATA_PATH / "df_activities.pickle")
 
 df["sent_time"] = pd.to_datetime(df["sent_time"])
 df["guardian_id"] = df["guardian_id"].astype("Int64")
@@ -35,7 +36,6 @@ for gid in tqdm(df["groups_id"].dropna().unique()):
 
     # filter only specific group
     dfg = df[df["groups_id"] == gid]
-    df_guardian = dfg[dfg["action"] == "guardian"]
 
     for day in sorted(dfg["sent_day"].unique()):
 
@@ -66,12 +66,31 @@ for gid in tqdm(df["groups_id"].dropna().unique()):
         n_distinct_moderators = len(dfday["moderator_id"].dropna().unique())
         output.extend([n_moderator_messages, n_distinct_moderators])
 
+        iids = set(dfday["interventions_id"].dropna().unique())
+
+        intervention_features = ["language","activity_type","difficulty_level","response_type","audience","learning_domain"]
+        features = [[] for i in range(len(intervention_features))]
+
+        if len(iids) > 0:
+            
+            for iid in iids:
+                intervention_data = dfa[dfa["intervention_id"]==int(iid)]
+                
+                if intervention_data.shape[0] >0:
+
+                    for i, name in enumerate(intervention_features):
+                        features[i].extend(intervention_data[name].dropna().unique().tolist())
+                else:
+                    pass
+
+        output.extend(features)
         X.append(output)
 
 X = pd.DataFrame(X)
 colnames = ["group_id", "sent_day", "n_guardians", "guardian_ids", "guardian_ids_history"]
 colnames.extend(intervention_types)
 colnames.extend(["DA_intervention_hours", "n_moderator_messages", "n_distinct_moderators"])
+colnames.extend(intervention_features)
 X.columns = colnames
 
 # df_hour_dummies = pd.get_dummies(X["DA_intervention_hours"].apply(pd.Series).stack()).sum(level=0)
