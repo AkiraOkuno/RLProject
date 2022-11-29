@@ -522,8 +522,21 @@ docs = ["sphinxext-opengraph (>=0.4.2)", "sphinx-prompt (>=1.3.0)", "Pillow (>=7
 benchmark = ["memory-profiler (>=0.57.0)", "pandas (>=1.0.5)", "matplotlib (>=3.1.2)"]
 
 [[package]]
+name = "scikit-surprise"
+version = "1.1.3"
+description = "An easy-to-use library for recommender systems."
+category = "main"
+optional = false
+python-versions = ">=3.8"
+
+[package.dependencies]
+joblib = ">=1.0.0"
+numpy = ">=1.17.3"
+scipy = ">=1.3.2"
+
+[[package]]
 name = "scipy"
-version = "1.9.2"
+version = "1.9.3"
 description = "Fundamental algorithms for scientific computing in Python"
 category = "main"
 optional = false
@@ -608,6 +621,17 @@ scipy = ">=1.3"
 build = ["cython (>=0.29.26)"]
 develop = ["cython (>=0.29.26)"]
 docs = ["sphinx", "nbconvert", "jupyter-client", "ipykernel", "matplotlib", "nbformat", "numpydoc", "pandas-datareader"]
+
+[[package]]
+name = "surprise"
+version = "0.1"
+description = "An easy-to-use library for recommender systems."
+category = "main"
+optional = false
+python-versions = "*"
+
+[package.dependencies]
+scikit-surprise = "*"
 
 [[package]]
 name = "tenacity"
@@ -710,7 +734,7 @@ testing = ["coverage (>=5.0.3)", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.10"
-content-hash = "0e3e1e7488897aa9ff47cc61b71bb716fe011fa81634db2e16b99d22496252da"
+content-hash = "b4f38c9e9983a3e4541a9e528c49aa85c9a5ba2a9a0fc39f74b3cd97e88869e3"
 
 [metadata.files]
 atomicwrites = []
@@ -758,12 +782,14 @@ python-dateutil = []
 pytz = []
 pyyaml = []
 scikit-learn = []
+scikit-surprise = []
 scipy = []
 seaborn = []
 setuptools-scm = []
 six = []
 sklearn = []
 statsmodels = []
+surprise = []
 tenacity = []
 threadpoolctl = []
 toml = []
