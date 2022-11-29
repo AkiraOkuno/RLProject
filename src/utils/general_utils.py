@@ -1,4 +1,5 @@
 import datetime
+import json
 import pickle
 
 
@@ -24,7 +25,12 @@ def open_pickle(path):
     with open(path, "rb") as f:
         output = pickle.load(f)
     return output
+    
 
+def save_json(obj, path):
+    with open(path, "w") as f:
+        f.write(json.dumps(obj))
+        
 
 def normalize(df, cols):
     df_normalized = df.copy()
