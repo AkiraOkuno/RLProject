@@ -7,14 +7,12 @@ import sys
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from tqdm import tqdm
-from surprise import SVD
-from surprise import Dataset
-from surprise.model_selection import cross_validate
-from surprise import Reader
-from sklearn.manifold import TSNE
-import seaborn as sns
 import plotly.express as px
+import seaborn as sns
+from sklearn.manifold import TSNE
+from surprise import SVD, Dataset, Reader
+from surprise.model_selection import cross_validate
+from tqdm import tqdm
 
 sys.path.append(os.getcwd())
 from src.utils import general_utils

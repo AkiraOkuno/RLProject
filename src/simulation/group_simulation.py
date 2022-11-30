@@ -8,7 +8,6 @@ from matplotlib import pyplot as plt
 from scipy.stats import bernoulli
 from tqdm import tqdm
 
-
 OUTPUT_PATH = pathlib.Path("outputs/plots/simulation")
 OUTPUT_PATH.mkdir(parents=True, exist_ok=True)
 
@@ -138,7 +137,6 @@ def two_stage_intervention(gsim: GroupSimulation):
 
 def two_stage_UCB_intervention(gsim: GroupSimulation, delta):
 
-    params = gsim.params
     df = gsim.get_df()
 
     # matrix with guardian and group task as index that maps to mean response of guardian in periods
@@ -186,10 +184,10 @@ def two_stage_UCB_intervention(gsim: GroupSimulation, delta):
             n_ilk = df_lk[df_lk["group_task"] == l_k].shape[0]
 
             # for numeric reasons, if hat(p_ilk)=1, make it 1-eps
-            if p_matrix[guardian][l_k] == 1:
-                p_ilk = p_matrix[guardian][l_k] - gsim.eps
-            else:
-                p_ilk = p_matrix[guardian][l_k]
+            #if p_matrix[guardian][l_k] == 1:
+            #    p_ilk = p_matrix[guardian][l_k] - gsim.eps
+            #else:
+            #    p_ilk = p_matrix[guardian][l_k]
 
             # q_ik = (mean_response - p_ilk)/(1-p_ilk)
             a_ik = mean_response + np.sqrt(np.log(1 / delta) / (2 * n_ilk)) - LCB[guardian][group_task]
@@ -238,5 +236,5 @@ df = pd.DataFrame(g.data)
 df.columns = ["period", "guardian", "group_task", "personalized_nudge", "y"]
 
 df.groupby("period")["y"].sum().plot()
-plt.savefig(OUTPUT_PATH / f"optimal_algo.png")
+plt.savefig(OUTPUT_PATH / "optimal_algo.png")
 breakpoint()

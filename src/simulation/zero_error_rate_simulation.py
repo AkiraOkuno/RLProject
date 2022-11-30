@@ -1,8 +1,9 @@
-import numpy as np
-import itertools
-import matplotlib.pyplot as plt
-from tqdm import tqdm
 import argparse
+import itertools
+
+import matplotlib.pyplot as plt
+import numpy as np
+from tqdm import tqdm
 
 EPS = 1e-10
 

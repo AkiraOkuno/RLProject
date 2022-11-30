@@ -1,9 +1,10 @@
-import numpy as np
-import random
-from scipy.stats import bernoulli
-import pandas as pd
 import pathlib
+import random
+
+import numpy as np
+import pandas as pd
 from matplotlib import pyplot as plt
+from scipy.stats import bernoulli
 from tqdm import tqdm
 
 OUTPUT_PATH = pathlib.Path("outputs/plots/simulation")
@@ -268,6 +269,8 @@ random_periods = 200
 twostage_periods = 100
 
 g = Groups(n_groups, n_guardians_per_group, n_group_tasks, n_personal_nudges, tau)
+breakpoint()
+
 g.intervene(g.random_intervention, random_periods)
 
 # breakpoint()

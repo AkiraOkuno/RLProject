@@ -3,16 +3,16 @@ import json
 import os
 import pathlib
 import sys
+import warnings
 
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
-import warnings
 
 sys.path.append(os.getcwd())
 from src.utils import general_utils
 
-warnings.simplefilter(action='ignore', category=FutureWarning)
+warnings.simplefilter(action="ignore", category=FutureWarning)
 
 parser = argparse.ArgumentParser()
 
@@ -66,7 +66,7 @@ df_moderator["message_type"] = df_moderator["message_type"].replace(
 print("Reading school data and merging with interventions data...")
 
 df_schools = pd.read_json(RAW_PATH / "df_groups_schools_22.json")
-df_schools = df_schools.rename({"id":"groups_id"}, axis=1)
+df_schools = df_schools.rename({"id": "groups_id"}, axis=1)
 df_interventions = df_interventions.merge(df_schools, on="groups_id", how="left")
 
 print("Concatenating data...")
@@ -173,7 +173,7 @@ df_activities = df_activities.drop(columns=["sub_domain"]).drop_duplicates()
 df_activities = df_interventions_activity.merge(df_activities, on="activity_id", how="left")
 
 # replace string "None" by nan
-df_activities["learning_domain"] = df_activities["learning_domain"].replace("None",np.nan)
+df_activities["learning_domain"] = df_activities["learning_domain"].replace("None", np.nan)
 del df_interventions_activity
 
 print("Final saving...")

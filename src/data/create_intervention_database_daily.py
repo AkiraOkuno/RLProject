@@ -68,15 +68,22 @@ for gid in tqdm(df["groups_id"].dropna().unique()):
 
         iids = set(dfday["interventions_id"].dropna().unique())
 
-        intervention_features = ["language","activity_type","difficulty_level","response_type","audience","learning_domain"]
+        intervention_features = [
+            "language",
+            "activity_type",
+            "difficulty_level",
+            "response_type",
+            "audience",
+            "learning_domain",
+        ]
         features = [[] for i in range(len(intervention_features))]
 
         if len(iids) > 0:
-            
+
             for iid in iids:
-                intervention_data = dfa[dfa["intervention_id"]==int(iid)]
-                
-                if intervention_data.shape[0] >0:
+                intervention_data = dfa[dfa["intervention_id"] == int(iid)]
+
+                if intervention_data.shape[0] > 0:
 
                     for i, name in enumerate(intervention_features):
                         features[i].extend(intervention_data[name].dropna().unique().tolist())

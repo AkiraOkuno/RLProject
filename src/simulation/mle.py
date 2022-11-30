@@ -1,10 +1,11 @@
+import pathlib
 import random
-from scipy.stats import bernoulli
+
 import numpy as np
 import scipy.optimize as opt
-from tqdm import tqdm
-import pathlib
 from matplotlib import pyplot as plt
+from scipy.stats import bernoulli
+from tqdm import tqdm
 
 OUTPUT_PATH = pathlib.Path("outputs/plots/simulation")
 OUTPUT_PATH.mkdir(parents=True, exist_ok=True)

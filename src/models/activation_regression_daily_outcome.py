@@ -89,7 +89,7 @@ features = [
 ]
 
 if args.all:
-    
+
     dfa = df_daily.copy()
     dfa["daily_total_messages"] = dfa["guardian_ids_history"].apply(len)
 
@@ -100,7 +100,7 @@ if args.all:
             df_hour[h] = 0
 
     for h in range(8):
-        
+
         col = f"{3*h}-{3*h+2}"
         dfa[col] = 0
 
@@ -138,11 +138,11 @@ if args.all:
             "weekday",
             "21-23",
             "daily_total_messages",
-            "language", 
+            "language",
             "activity_type",
-            "difficulty_level", 
-            "response_type", 
-            "audience", 
+            "difficulty_level",
+            "response_type",
+            "audience",
             "learning_domain",
         ]
     )
@@ -154,16 +154,16 @@ if args.all:
     X = X.loc[:, (X != 0).any(axis=0)]
 
     # add group fixed effects
-    X = pd.get_dummies(X, columns=['group_id'],drop_first=True)
+    X = pd.get_dummies(X, columns=["group_id"], drop_first=True)
 
     # add constant to model
     X["constant"] = 1
 
     ####
-    gid_count = X[[col for col in X.columns if col[:8]=="group_id"]].sum(axis=0)
-    gid_remove = gid_count[gid_count < np.quantile(gid_count,0.8)].index.tolist()
+    gid_count = X[[col for col in X.columns if col[:8] == "group_id"]].sum(axis=0)
+    gid_remove = gid_count[gid_count < np.quantile(gid_count, 0.8)].index.tolist()
 
-    #X = X.drop(columns=gid_remove)
+    # X = X.drop(columns=gid_remove)
     breakpoint()
     reg = sm.OLS(y, X.drop(columns=gid_remove)).fit()
 
