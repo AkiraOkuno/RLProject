@@ -65,6 +65,28 @@ class GroupSimulation:
 
             self.current_period += 1
 
+    def play_each_arm_once(self):
+
+        # total of L+L*K*N/tau periods
+
+        # play all group tasks once without nudges
+        for group_task in range(self.n_group_tasks):
+            for guardian in range(self.n_guardians_per_group):
+
+                y = bernoulli.rvs(self.params[guardian]["p"][group_task])
+                self.data.append([self.current_period, guardian, group_task, None, y])
+
+            # play each personal nudge under each group task for each guardian
+            for nudge in range(self.n_personal_nudges):
+                for guardian in range(self.n_guardians_per_group):
+
+                    p = self.params[guardian]["p"][group_task]
+                    q = self.params[guardian]["q"][nudge]
+                    y = bernoulli.rvs(p + (1 - p) * q)
+                    self.data.append([self.current_period, guardian, group_task, nudge, y])
+
+        self.current_period += 1
+
     def get_df(self):
 
         df = pd.DataFrame(self.data)
@@ -184,13 +206,13 @@ def two_stage_UCB_intervention(gsim: GroupSimulation, delta):
             n_ilk = df_lk[df_lk["group_task"] == l_k].shape[0]
 
             # for numeric reasons, if hat(p_ilk)=1, make it 1-eps
-            #if p_matrix[guardian][l_k] == 1:
+            # if p_matrix[guardian][l_k] == 1:
             #    p_ilk = p_matrix[guardian][l_k] - gsim.eps
-            #else:
+            # else:
             #    p_ilk = p_matrix[guardian][l_k]
 
             # q_ik = (mean_response - p_ilk)/(1-p_ilk)
-            a_ik = mean_response + np.sqrt(np.log(1 / delta) / (2 * n_ilk)) - LCB[guardian][group_task]
+            a_ik = mean_response + np.sqrt(np.log(1 / delta) / (2 * n_ilk)) - LCB[guardian][l_k]
 
             a_estimates[guardian][nudge] = a_ik
 
@@ -216,25 +238,116 @@ def two_stage_UCB_intervention(gsim: GroupSimulation, delta):
     return group_task, personal_nudges
 
 
+def full_UCB_intervention(gsim: GroupSimulation, delta):
+
+    df = gsim.get_df()
+
+    # matrix with guardian and group task as index that maps to mean response of guardian in periods
+    # where group task is applied and no personal nudge is applied to the guardian
+    # e.g. p_matrix[i][j] = mean response (y) of guardian i under only group task j
+    p_matrix = df[df["personalized_nudge"].isna()].groupby(["guardian", "group_task"])["y"].mean()
+
+    # same thing but with the number of periods where group task is applied and no personal nudge is applied to the guardian
+    n_matrix = df[df["personalized_nudge"].isna()].groupby(["guardian", "group_task"])["y"].size()
+
+    # create matrix of upper confidence bound = p + sqrt(log(1/delta)/2n) and lower confidence bound
+    UCB = np.sqrt(np.log(1 / delta) / (2 * n_matrix))
+    UCB += p_matrix
+
+    # if some ucb>1, lower to 1
+    # UCB = np.minimum(UCB, 1)
+
+    LCB = np.sqrt(np.log(1 / delta) / (2 * n_matrix))
+    LCB = p_matrix - LCB
+
+    # if some lcb < 0, make it 0
+    # LCB = np.maximum(LCB, 0)
+
+    # sum of each tasks ucb's over guardians
+    sum_UCB = UCB.reset_index().groupby("group_task")["y"].sum()
+
+    # empty list that receives group tasks and their personal nudge strategy
+    optimal_nudges_by_group_task = []
+
+    # for each guardian/nudge and group task pair, calculate ucb of estimated reward
+
+    for group_task in range(gsim.n_group_tasks):
+
+        total_reward = 0
+
+        task_reward = sum_UCB[group_task]
+        total_reward += task_reward
+
+        df_l = df[df["group_task"] == group_task]
+
+        # fixed a group task, we choose nudges that max q_ik
+        guardian_nudges = []
+
+        for guardian in range(gsim.n_guardians_per_group):
+
+            # find optimal nudge for each guardian under group task l
+
+            nudge_rewards = []
+
+            for nudge in range(gsim.n_personal_nudges):
+
+                df_ilk = df_l[(df_l["guardian"] == guardian) & (df_l["personalized_nudge"] == nudge)]
+
+                y_mean_ilk = df_ilk["y"].mean()
+                n_ilk = df_ilk.shape[0]
+
+                score = y_mean_ilk + np.sqrt((0.5 / n_ilk) * np.log(1 / delta)) - LCB[guardian][group_task]
+                nudge_rewards.append((nudge, score))
+
+            best_nudge = max(nudge_rewards, key=lambda x: x[1])
+
+            guardian_nudges.append((guardian, best_nudge[0], best_nudge[1]))
+
+        # sort guardians by score
+        guardian_nudges = sorted(guardian_nudges, key=lambda x: x[2])
+
+        # list of guardians to be nudged
+        guardians_nudged = guardian_nudges[-gsim.tau :]
+
+        personal_nudges = {}
+
+        for guardian, nudge, _ in guardians_nudged:
+
+            personal_nudges[guardian] = nudge
+
+        # get final reward of optimal strategy under group task l
+        nudge_reward = sum([x[2] for x in guardians_nudged])
+        total_reward += nudge_reward
+
+        optimal_nudges_by_group_task.append((group_task, personal_nudges, total_reward))
+
+    # get final nudges
+    group_task, personal_nudges = max(optimal_nudges_by_group_task, key=lambda x: x[2])[:2]
+
+    return (group_task, personal_nudges)
+
+
 ##############################################################################################
 
-n_guardians_per_group = 20
+n_guardians_per_group = 50
 n_group_tasks = 5
 n_personal_nudges = 5
 tau = 5
 delta = 0.05
-random_periods = 100
+random_periods = 400
 twostage_periods = 200
 
 g = GroupSimulation(n_guardians_per_group, n_group_tasks, n_personal_nudges, tau)
-g.intervene(random_intervention, random_periods)
+# g.intervene(random_intervention, random_periods)
+g.play_each_arm_once()
 
-func = partial(two_stage_UCB_intervention, delta=delta)
+func = partial(full_UCB_intervention, delta=delta)
 g.intervene(func, twostage_periods)
+breakpoint()
 
 df = pd.DataFrame(g.data)
 df.columns = ["period", "guardian", "group_task", "personalized_nudge", "y"]
 
-df.groupby("period")["y"].sum().plot()
+df.groupby("period")["y"].sum()[1:].plot()
 plt.savefig(OUTPUT_PATH / "optimal_algo.png")
 breakpoint()
