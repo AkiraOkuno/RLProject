@@ -26,6 +26,7 @@ class GroupSimulation:
         self.eps = 1e-10
 
         self.data = []
+        self.nudge_history = []
 
         # self.params is a dict that contains params for every guardian
         # e.g. guardian i's p parameter for k-th group task: params[i]['p'][k]
@@ -45,6 +46,7 @@ class GroupSimulation:
         for _ in tqdm(range(periods)):
 
             group_task, personal_nudges = intervention_function(self)
+            self.nudge_history.append((group_task, personal_nudges))
 
             for guardian in range(self.n_guardians_per_group):
 
@@ -67,6 +69,11 @@ class GroupSimulation:
 
     def play_each_arm_once(self):
 
+        """
+        Method to observe each arm once, i.e. each individual intervention and each intervention,guardian,nudge possibility.
+        Does not add to nudge history as it is not strategic nudge.
+        """
+
         # total of L+L*K*N/tau periods
 
         # play all group tasks once without nudges
@@ -74,6 +81,7 @@ class GroupSimulation:
             for guardian in range(self.n_guardians_per_group):
 
                 y = bernoulli.rvs(self.params[guardian]["p"][group_task])
+
                 self.data.append([self.current_period, guardian, group_task, None, y])
 
             # play each personal nudge under each group task for each guardian
@@ -83,6 +91,7 @@ class GroupSimulation:
                     p = self.params[guardian]["p"][group_task]
                     q = self.params[guardian]["q"][nudge]
                     y = bernoulli.rvs(p + (1 - p) * q)
+
                     self.data.append([self.current_period, guardian, group_task, nudge, y])
 
         self.current_period += 1
@@ -94,8 +103,91 @@ class GroupSimulation:
 
         return df
 
+    def get_optimal_nudges(self):
+
+        L = self.n_group_tasks
+        N = self.n_guardians_per_group
+
+        opt_reward = 0
+
+        p_params = [el["p"] for el in self.params.values()]
+        task_rewards = np.sum(p_params, axis=0)
+
+        for task in range(L):
+
+            reward = 0
+
+            task_reward = task_rewards[task]
+            reward += task_reward
+
+            a_is = []
+            k_is = []
+
+            for i in range(N):
+
+                k_i = np.argmax(self.params[i]["q"])
+                a_i = (1 - self.params[i]["p"][task]) * self.params[i]["q"][k_i]
+
+                k_is.append(k_i)
+                a_is.append(a_i)
+
+            nudges = []
+
+            for i in range(1, tau + 1):
+
+                ith_score = sorted(a_is)[-i]
+                ith_guardian = a_is.index(ith_score)
+
+                nudges.append([ith_guardian, k_is[ith_guardian], ith_score])
+                reward += ith_score
+
+            if reward > opt_reward:
+                opt_reward = reward
+                l_opt = task
+                nudges_opt = nudges
+
+        personal_nudges_opt = {}
+
+        for guardian, nudge, _ in nudges_opt:
+
+            personal_nudges_opt[guardian] = nudge
+
+        return (opt_reward, [l_opt, task_rewards[l_opt]], personal_nudges_opt)
+
+    def regret(self, group_task, personal_nudges):
+
+        opt_reward, opt_group_task, opt_personal_nudges = self.get_optimal_nudges()
+
+        task_reward = np.sum([el[group_task] for el in [param["p"] for param in self.params.values()]])
+
+        total_reward = 0
+
+        for guardian, nudge in personal_nudges.items():
+
+            total_reward += (1 - self.params[guardian]["p"][group_task]) * self.params[guardian]["q"][nudge]
+
+        total_reward += task_reward
+
+        regret = opt_reward - total_reward
+
+        if regret < self.eps:
+            regret = 0
+
+        return regret
+
     def cumulative_regret(self):
-        pass
+
+        regret_history = []
+        cumulative = 0
+
+        for task, nudges in self.nudge_history:
+
+            regret = self.regret(task, nudges)
+            cumulative += regret
+
+            regret_history.append(cumulative)
+
+        return regret_history
 
 
 def random_intervention(gsim: GroupSimulation):
@@ -157,9 +249,10 @@ def two_stage_intervention(gsim: GroupSimulation):
     return group_task_chosen, personal_nudges
 
 
-def two_stage_UCB_intervention(gsim: GroupSimulation, delta):
+def two_stage_UCB_intervention(gsim: GroupSimulation, delta_func):
 
     df = gsim.get_df()
+    delta = delta_func(gsim.current_period)
 
     # matrix with guardian and group task as index that maps to mean response of guardian in periods
     # where group task is applied and no personal nudge is applied to the guardian
@@ -238,9 +331,10 @@ def two_stage_UCB_intervention(gsim: GroupSimulation, delta):
     return group_task, personal_nudges
 
 
-def full_UCB_intervention(gsim: GroupSimulation, delta):
+def full_UCB_intervention(gsim: GroupSimulation, delta_func):
 
     df = gsim.get_df()
+    delta = delta_func(gsim.current_period)
 
     # matrix with guardian and group task as index that maps to mean response of guardian in periods
     # where group task is applied and no personal nudge is applied to the guardian
@@ -329,20 +423,31 @@ def full_UCB_intervention(gsim: GroupSimulation, delta):
 
 ##############################################################################################
 
-n_guardians_per_group = 50
-n_group_tasks = 5
-n_personal_nudges = 5
-tau = 5
-delta = 0.05
+n_guardians_per_group = 10
+n_group_tasks = 2
+n_personal_nudges = 2
+tau = 2
 random_periods = 400
 twostage_periods = 200
 
+
+def delta_func(t):
+    return 1 / t
+
+
 g = GroupSimulation(n_guardians_per_group, n_group_tasks, n_personal_nudges, tau)
+g.get_optimal_nudges()
 # g.intervene(random_intervention, random_periods)
 g.play_each_arm_once()
 
-func = partial(full_UCB_intervention, delta=delta)
-g.intervene(func, twostage_periods)
+g.intervene(random_intervention, 50)
+func = partial(full_UCB_intervention, delta_func=delta_func)
+g.intervene(func, 2000)
+
+regret_timeline = g.cumulative_regret()
+plt.plot(regret_timeline)
+plt.savefig(OUTPUT_PATH / "regret.png")
+plt.close()
 breakpoint()
 
 df = pd.DataFrame(g.data)
