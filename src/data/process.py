@@ -68,9 +68,9 @@ df_moderator["message_type"] = df_moderator["message_type"].replace(
 
 # print("Reading school data and merging with interventions data...")
 
-#df_schools = pd.read_json(RAW_PATH / "df_groups_schools_22.json")
-#df_schools = df_schools.rename({"id": "groups_id"}, axis=1)
-#df_interventions = df_interventions.merge(df_schools, on="groups_id", how="left")
+# df_schools = pd.read_json(RAW_PATH / "df_groups_schools_22.json")
+# df_schools = df_schools.rename({"id": "groups_id"}, axis=1)
+# df_interventions = df_interventions.merge(df_schools, on="groups_id", how="left")
 
 print("Concatenating data...")
 df = pd.concat([df_guardian, df_moderator, df_interventions])
@@ -105,7 +105,7 @@ del df_interventions, df_moderator, df_guardian
 # Process kids data
 # kids data: relates id ("kid id") to guardian id. Each guardian id can have multiple kids.
 print("Reading kids data...")
-with open(RAW_PATH / "additional_tables/kids.json", "r") as f: 
+with open(RAW_PATH / "additional_tables/kids.json", "r") as f:
     df_kids = pd.DataFrame(json.load(f, strict=False))
 
 # dictionary to map guardian ids to list of kids, where each entry in the list contains the kid's features on the kids data
@@ -113,12 +113,12 @@ guardian_id_to_list_of_kids = {}
 
 for gid in tqdm(df_kids["guardian_id"].dropna().unique()):
 
-    df_gid = df_kids[df_kids["guardian_id"]==gid]
+    df_gid = df_kids[df_kids["guardian_id"] == gid]
 
     # list of dictionaries containing the df features
-    guardian_list = df_gid[["gender","preschool_private","class"]].to_dict('records')
+    guardian_list = df_gid[["gender", "preschool_private", "class"]].to_dict("records")
 
-    #for i in range(df_gid.shape[0]):
+    # for i in range(df_gid.shape[0]):
     #    gid_kids.append({"gender":df_gid["gender"][0], "preschool_private":df_gid["preschool_private"][0], "class":df_gid["class"][0]})
 
     guardian_id_to_list_of_kids[gid] = guardian_list
@@ -130,16 +130,17 @@ del guardian_id_to_list_of_kids
 
 # Process moderator data
 print("Reading moderators data...")
-with open(RAW_PATH / "additional_tables/moderators.json", "r") as f: df_mod = pd.DataFrame(json.load(f, strict=False))
+with open(RAW_PATH / "additional_tables/moderators.json", "r") as f:
+    df_mod = pd.DataFrame(json.load(f, strict=False))
 
 # filter relevant features
-df_mod = df_mod[["id","role","active","e_role","block"]]
+df_mod = df_mod[["id", "role", "active", "e_role", "block"]]
 
 # rename id to moderator id
-df_mod = df_mod.rename({"id":"moderator_id"},axis=1)
+df_mod = df_mod.rename({"id": "moderator_id"}, axis=1)
 
 # modify merged df moderator id to int
-df["moderator_id"] = df["moderator_id"].fillna(0).astype('int')
+df["moderator_id"] = df["moderator_id"].fillna(0).astype("int")
 
 # merge moderator data to merged df
 df = df.merge(df_mod, on="moderator_id", how="left")
@@ -149,16 +150,17 @@ del df_mod
 # Process moderator data
 # use this to map moderator ids to school ids
 print("Reading moderators school data...")
-with open(RAW_PATH / "additional_tables/moderator_school.json", "r") as f: df_mods = pd.DataFrame(json.load(f, strict=False))
+with open(RAW_PATH / "additional_tables/moderator_school.json", "r") as f:
+    df_mods = pd.DataFrame(json.load(f, strict=False))
 
-moderator_id_to_schools_id = dict(zip(df_mods["moderator_id"],df_mods["schools_id"]))
+moderator_id_to_schools_id = dict(zip(df_mods["moderator_id"], df_mods["schools_id"]))
 
 df["moderator_school_id"] = df["moderator_id"].map(moderator_id_to_schools_id)
 del moderator_id_to_schools_id
 
 # Process schools data
 # print("Reading school data...")
-# with open(RAW_PATH / "additional_tables/schools.json", "r") as f: 
+# with open(RAW_PATH / "additional_tables/schools.json", "r") as f:
 #    df_schools = pd.DataFrame(json.load(f, strict=False))
 
 if args.pickle:
