@@ -1,0 +1,5 @@
+Outcome (Y): Number of days user engaged in group in the following 60 days after intervention
+Treatments (T): Binary treatments (nudges) variables
+Confounders (W): Continuous variables for each group message type in (0,1) representing the perc. of time each type was sent in history of group
+Covariates (X): guardian covariates, e.g. date_joining, number_of_group_members, moderator_msgs, number_of_msgs, etc.
+

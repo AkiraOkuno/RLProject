@@ -1,6 +1,7 @@
 import pathlib
 import random
 from functools import partial
+import argparse
 
 import numpy as np
 import pandas as pd
@@ -10,6 +11,45 @@ from tqdm import tqdm
 
 OUTPUT_PATH = pathlib.Path("outputs/plots/simulation")
 OUTPUT_PATH.mkdir(parents=True, exist_ok=True)
+
+#
+DATA_PATH = pathlib.Path("data/processed")
+#
+
+parser = argparse.ArgumentParser()
+
+parser.add_argument(
+    "-n",
+    help="Number of guardians",
+    type=int,
+    default=10,
+)
+parser.add_argument(
+    "-L",
+    help="Number of tasks",
+    type=int,
+    default=3,
+)
+parser.add_argument(
+    "-tau",
+    help="Number of nudged guardians",
+    type=int,
+    default=1,
+)
+parser.add_argument(
+    "-t",
+    help="Number of times to simulate",
+    type=int,
+    default=1000,
+)
+parser.add_argument(
+    "-tr",
+    help="Number of random times to randomly simulate in the beginning of the simulation",
+    type=int,
+    default=50,
+)
+
+args = parser.parse_args()
 
 
 class GroupSimulation:
@@ -21,7 +61,7 @@ class GroupSimulation:
         self.n_personal_nudges = n_personal_nudges
 
         self.tau = tau
-        self.current_period = 0
+        self.current_period = 1
         self.learning_period = 2
         self.eps = 1e-10
 
@@ -41,7 +81,9 @@ class GroupSimulation:
             self.params[i]["p"] = p
             self.params[i]["q"] = q
 
-    def intervene(self, intervention_function, periods):
+        self.opt_reward, self.opt_group_task, self.opt_personal_nudges = self.get_optimal_nudges()
+
+    def intervene(self, intervention_function, periods, update_period=True):
 
         for _ in tqdm(range(periods)):
 
@@ -65,7 +107,8 @@ class GroupSimulation:
 
                 self.data.append(data)
 
-            self.current_period += 1
+            if update_period:
+                self.current_period += 1
 
     def play_each_arm_once(self):
 
@@ -156,8 +199,6 @@ class GroupSimulation:
 
     def regret(self, group_task, personal_nudges):
 
-        opt_reward, opt_group_task, opt_personal_nudges = self.get_optimal_nudges()
-
         task_reward = np.sum([el[group_task] for el in [param["p"] for param in self.params.values()]])
 
         total_reward = 0
@@ -168,7 +209,7 @@ class GroupSimulation:
 
         total_reward += task_reward
 
-        regret = opt_reward - total_reward
+        regret = self.opt_reward - total_reward
 
         if regret < self.eps:
             regret = 0
@@ -188,6 +229,31 @@ class GroupSimulation:
             regret_history.append(cumulative)
 
         return regret_history
+
+
+    def n_active_guardians(self):
+
+        df = self.get_df()
+
+        n_active_history = df.groupby("period")["y"].sum()[1:]
+
+        return(n_active_history)
+
+    def guardian_activity_above_threshold(self, threshold, window):
+
+        df = self.get_df()
+
+        history = []
+
+        for t in range(window,df["period"].max()+1):
+
+            dft = df[(df["period"]>t-window) & (df["period"]<=t)]
+            n_activations_by_guardian = dft.groupby("guardian")["y"].sum()
+
+            n_guardians_above_threshold = (n_activations_by_guardian > threshold).sum()
+            history.append(n_guardians_above_threshold)
+
+        return(np.array(history))
 
 
 def random_intervention(gsim: GroupSimulation):
@@ -423,36 +489,62 @@ def full_UCB_intervention(gsim: GroupSimulation, delta_func):
 
 ##############################################################################################
 
-n_guardians_per_group = 10
-n_group_tasks = 2
-n_personal_nudges = 2
-tau = 2
-random_periods = 400
-twostage_periods = 200
+# SIMULATION OF RL-LIKE GROUP
+#df = pd.read_csv(DATA_PATH / "df_merge.csv")
+#df["sent_time"] = pd.to_datetime(df["sent_time"],errors="coerce")
+#df["unique_day"] =[str(el.day)+'-'+str(el.month)+'-'+str(el.year)  for el in df.sent_time]
 
+#def f(x): return x.dropna().nunique()
+
+#n_groups = df.groupby("groups_id")["guardian_id"].nunique()
+#n_groups = n_groups[n_groups>0]
+
+# group ids with more than 0 guardians
+#groups = n_groups.index.values
+
+n_guardians_per_group = args.n #  int(n_groups.mean()) #15
+n_group_tasks = args.L #df["intervention_type"].dropna().nunique()
+n_personal_nudges = args.L 
+tau = args.tau 
+random_periods = args.tr
+intervention_periods = args.t
 
 def delta_func(t):
     return 1 / t
 
+def delta_func2(t):
+    return(1/(np.log(1+t*np.log(t)**2)))
 
 g = GroupSimulation(n_guardians_per_group, n_group_tasks, n_personal_nudges, tau)
 g.get_optimal_nudges()
-# g.intervene(random_intervention, random_periods)
+
 g.play_each_arm_once()
+g.intervene(random_intervention, random_periods, update_period=False)
 
-g.intervene(random_intervention, 50)
-func = partial(full_UCB_intervention, delta_func=delta_func)
-g.intervene(func, 2000)
+func = partial(full_UCB_intervention, delta_func=delta_func2)
+g.intervene(func, intervention_periods)
 
+# cumulative regret plot
 regret_timeline = g.cumulative_regret()
-plt.plot(regret_timeline)
-plt.savefig(OUTPUT_PATH / "regret.png")
+
+plt.plot([n/3.3 for n in range(len(regret_timeline))], regret_timeline)
+plt.savefig(OUTPUT_PATH / f"regret-n_{n_guardians_per_group}-ntask_{n_group_tasks}-npersonal_{n_personal_nudges}-tau_{tau}-nrandom_{random_periods}-nperiods_{args.t}.png")
 plt.close()
-breakpoint()
 
-df = pd.DataFrame(g.data)
-df.columns = ["period", "guardian", "group_task", "personalized_nudge", "y"]
+# number of active guardians in each period plot
+n_active_history = g.n_active_guardians()
+plt.plot([n/3.3 for n in range(len(regret_timeline))],n_active_history)
+plt.savefig(OUTPUT_PATH / f"n_active_guardians-n_{n_guardians_per_group}-ntask_{n_group_tasks}-npersonal_{n_personal_nudges}-tau_{tau}-nrandom_{random_periods}-nperiods_{args.t}.png")
+plt.close()
 
-df.groupby("period")["y"].sum()[1:].plot()
-plt.savefig(OUTPUT_PATH / "optimal_algo.png")
+# number of guardians that remain active for the past 15 days
+# where active = engage ate least 1 time out of 15
+window=15
+threshold=1
+seq_activity = g.guardian_activity_above_threshold(threshold,window)
+
+plt.plot([n/3.3 for n in range(len(seq_activity))], seq_activity)
+plt.savefig(OUTPUT_PATH / f"sequentially_active_guardians-n_{n_guardians_per_group}-ntask_{n_group_tasks}-npersonal_{n_personal_nudges}-tau_{tau}-nrandom_{random_periods}-nperiods_{args.T}-window_{window}-threshold_{threshold}.png")
+plt.close()
+
 breakpoint()
