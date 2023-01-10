@@ -61,6 +61,14 @@ python-versions = ">=3.7"
 colorama = {version = "*", markers = "platform_system == \"Windows\""}
 
 [[package]]
+name = "cloudpickle"
+version = "2.2.0"
+description = "Extended pickling support for Python objects"
+category = "main"
+optional = false
+python-versions = ">=3.6"
+
+[[package]]
 name = "colorama"
 version = "0.4.5"
 description = "Cross-platform colored terminal text."
@@ -113,6 +121,32 @@ description = "Distribution utilities"
 category = "dev"
 optional = false
 python-versions = "*"
+
+[[package]]
+name = "econml"
+version = "0.14.0"
+description = "This package contains several methods for calculating Conditional Average Treatment Effects"
+category = "main"
+optional = false
+python-versions = "*"
+
+[package.dependencies]
+joblib = ">=0.13.0"
+lightgbm = "*"
+numpy = "*"
+pandas = "*"
+scikit-learn = ">0.22.0,<1.2"
+scipy = ">1.4.0"
+shap = ">=0.38.1,<0.41.0"
+sparse = "*"
+statsmodels = ">=0.10"
+
+[package.extras]
+all = ["azure-cli", "keras (<2.4)", "tensorflow (>1.10,<2.3)", "protobuf (<4)", "matplotlib (<3.6.0)", "dowhy (<0.9)"]
+automl = ["azure-cli"]
+dowhy = ["dowhy (<0.9)"]
+plt = ["graphviz", "matplotlib (<3.6.0)"]
+tf = ["protobuf (<4)", "keras (<2.4)", "tensorflow (>1.10,<2.3)"]
 
 [[package]]
 name = "filelock"
@@ -211,6 +245,30 @@ optional = false
 python-versions = ">=3.7"
 
 [[package]]
+name = "lightgbm"
+version = "3.3.3"
+description = "LightGBM Python Package"
+category = "main"
+optional = false
+python-versions = "*"
+
+[package.dependencies]
+numpy = "*"
+scikit-learn = "!=0.22.0"
+scipy = "*"
+
+[package.extras]
+dask = ["dask[array] (>=2.0.0)", "dask[dataframe] (>=2.0.0)", "dask[distributed] (>=2.0.0)", "pandas"]
+
+[[package]]
+name = "llvmlite"
+version = "0.39.1"
+description = "lightweight wrapper around basic LLVM functionality"
+category = "main"
+optional = false
+python-versions = ">=3.7"
+
+[[package]]
 name = "matplotlib"
 version = "3.6.0"
 description = "Python plotting package"
@@ -276,6 +334,18 @@ description = "Node.js virtual environment builder"
 category = "dev"
 optional = false
 python-versions = ">=2.7,!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,!=3.5.*,!=3.6.*"
+
+[[package]]
+name = "numba"
+version = "0.56.4"
+description = "compiling Python code using LLVM"
+category = "main"
+optional = false
+python-versions = ">=3.7"
+
+[package.dependencies]
+llvmlite = ">=0.39.0dev0,<0.40"
+numpy = ">=1.18,<1.24"
 
 [[package]]
 name = "numpy"
@@ -584,6 +654,32 @@ test = ["pytest (>=6.2)", "virtualenv (>20)"]
 toml = ["setuptools (>=42)"]
 
 [[package]]
+name = "shap"
+version = "0.40.0"
+description = "A unified approach to explain the output of any machine learning model."
+category = "main"
+optional = false
+python-versions = "*"
+
+[package.dependencies]
+cloudpickle = "*"
+numba = "*"
+numpy = "*"
+packaging = ">20.9"
+pandas = "*"
+scikit-learn = "*"
+scipy = "*"
+slicer = "0.0.7"
+tqdm = ">4.25.0"
+
+[package.extras]
+all = ["catboost", "nbsphinx", "matplotlib", "sphinx", "pytest-cov", "pyod", "torch", "pytest", "sentencepiece", "xgboost", "opencv-python", "transformers", "lime", "pyspark", "lightgbm", "pytest-mpl", "numpydoc", "ipython", "sphinx-rtd-theme"]
+docs = ["matplotlib", "ipython", "numpydoc", "sphinx-rtd-theme", "sphinx", "nbsphinx"]
+others = ["lime"]
+plots = ["matplotlib", "ipython"]
+test = ["pytest", "pytest-mpl", "pytest-cov", "xgboost", "lightgbm", "catboost", "pyspark", "pyod", "transformers", "torch", "sentencepiece", "opencv-python"]
+
+[[package]]
 name = "six"
 version = "1.16.0"
 description = "Python 2 and 3 compatibility utilities"
@@ -601,6 +697,33 @@ python-versions = "*"
 
 [package.dependencies]
 scikit-learn = "*"
+
+[[package]]
+name = "slicer"
+version = "0.0.7"
+description = "A small package for big slicing."
+category = "main"
+optional = false
+python-versions = ">=3.6"
+
+[[package]]
+name = "sparse"
+version = "0.13.0"
+description = "Sparse n-dimensional arrays"
+category = "main"
+optional = false
+python-versions = ">=3.6, <4"
+
+[package.dependencies]
+numba = ">=0.49"
+numpy = ">=1.17"
+scipy = ">=0.19"
+
+[package.extras]
+all = ["dask", "pytest (>=3.5)", "pytest-black", "pytest-cov", "tox", "sphinx", "sphinx-rtd-theme"]
+docs = ["sphinx", "sphinx-rtd-theme"]
+tests = ["dask", "pytest (>=3.5)", "pytest-black", "pytest-cov"]
+tox = ["dask", "pytest (>=3.5)", "pytest-black", "pytest-cov", "tox"]
 
 [[package]]
 name = "statsmodels"
@@ -719,6 +842,26 @@ optional = false
 python-versions = "*"
 
 [[package]]
+name = "xgboost"
+version = "1.7.2"
+description = "XGBoost Python Package"
+category = "main"
+optional = false
+python-versions = ">=3.8"
+
+[package.dependencies]
+numpy = "*"
+scipy = "*"
+
+[package.extras]
+dask = ["dask", "pandas", "distributed"]
+datatable = ["datatable"]
+pandas = ["pandas"]
+plotting = ["graphviz", "matplotlib"]
+pyspark = ["pyspark", "scikit-learn", "cloudpickle"]
+scikit-learn = ["scikit-learn"]
+
+[[package]]
 name = "zope.interface"
 version = "5.4.0"
 description = "Interfaces for Python"
@@ -734,7 +877,7 @@ testing = ["coverage (>=5.0.3)", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.10"
-content-hash = "b4f38c9e9983a3e4541a9e528c49aa85c9a5ba2a9a0fc39f74b3cd97e88869e3"
+content-hash = "8cee4a98ab9980a3f0251233dadcfdda45a1d362899f87db9b231a482fecbb19"
 
 [metadata.files]
 atomicwrites = []
@@ -742,11 +885,13 @@ attrs = []
 black = []
 cfgv = []
 click = []
+cloudpickle = []
 colorama = []
 contourpy = []
 cycler = []
 datetime = []
 distlib = []
+econml = []
 filelock = []
 flake8 = []
 fonttools = []
@@ -755,12 +900,15 @@ isort = []
 joblib = []
 kaleido = []
 kiwisolver = []
+lightgbm = []
+llvmlite = []
 matplotlib = []
 mccabe = []
 more-itertools = []
 mypy-extensions = []
 networkx = []
 nodeenv = []
+numba = []
 numpy = []
 packaging = []
 pandas = []
@@ -786,8 +934,11 @@ scikit-surprise = []
 scipy = []
 seaborn = []
 setuptools-scm = []
+shap = []
 six = []
 sklearn = []
+slicer = []
+sparse = []
 statsmodels = []
 surprise = []
 tenacity = []
@@ -798,4 +949,5 @@ tqdm = []
 typing-extensions = []
 virtualenv = []
 wcwidth = []
+xgboost = []
 "zope.interface" = []
