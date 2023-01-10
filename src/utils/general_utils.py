@@ -31,6 +31,7 @@ def save_json(obj, path):
     with open(path, "w") as f:
         f.write(json.dumps(obj))
 
+
 def open_json(path):
     with open(path, "r") as f:
         output = json.load(f, strict=False)
