@@ -125,7 +125,7 @@ for gid in tqdm(df_kids["guardian_id"].dropna().unique()):
 
 del df_kids, df_gid
 
-df["kids_features"] = df["guardian_id"].map(guardian_id_to_list_of_kids).isna()
+df["kids_features"] = df["guardian_id"].map(guardian_id_to_list_of_kids)
 del guardian_id_to_list_of_kids
 
 # Process moderator data
@@ -169,9 +169,8 @@ if args.pickle:
 if args.csv:
     df.to_csv(OUTPUT_PATH / "df_merge_with_additional_tables.csv", index=False)
 
-breakpoint()
-
 print("Process guardian_date_left dataframe and activities data...")
+breakpoint()
 
 # process basic features from df_guardians_date_left
 dfl = pd.read_json(RAW_PATH / "df_guardians_date_left_22.json")
