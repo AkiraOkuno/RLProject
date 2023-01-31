@@ -15,6 +15,8 @@ sys.path.append(os.getcwd())
 from src.utils import general_utils
 
 DATABASES_PATH = pathlib.Path("outputs/databases")
+DATA_PATH = pathlib.Path("data/processed")
+
 OUTPUT_PATH = pathlib.Path("outputs/models/daily_outcome_model")
 OUTPUT_PATH.mkdir(parents=True, exist_ok=True)
 
