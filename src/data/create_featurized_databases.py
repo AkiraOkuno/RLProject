@@ -50,6 +50,8 @@ OUTPUT_PATH.mkdir(parents=True, exist_ok=True)
 
 if args.step_1:
 
+    gc.collect()
+
     # STEP 1
     ## Create a df1 with fixed guardian and group fixed features
     ## Unique identifiers are guardian_id + group_id
@@ -68,6 +70,12 @@ if args.step_1:
     with open(RAW_PATH / "additional_tables/kids.json", "r") as f:
         df_kids = pd.DataFrame(json.load(f, strict=False))
 
+    # creat a dict that maps group id to number of unique guardian ids that ever interacted ion the group
+    # do this before keeping only the valid guardians below
+    group_id_to_n_members_dict = dict(
+        df[["groups_id", "guardian_id"]].dropna().drop_duplicates().groupby("groups_id")["guardian_id"].nunique()
+    )
+
     # Filter valid guardian_ids
     # which are the ones that don't repeat the same id across different group_ids
     # maybe change this later if more info is given
@@ -76,7 +84,7 @@ if args.step_1:
     guardian_id_frequency = all_guardian_ids.value_counts()
     valid_guardian_ids = guardian_id_frequency[guardian_id_frequency == 1].index.tolist()
 
-    del all_guardian_ids, guardian_id_frequency
+    del guardian_id_frequency
 
     # create a df that will store the variables to be outputted
     df_out = pd.DataFrame({"guardian_id": valid_guardian_ids})
@@ -155,10 +163,9 @@ if args.step_1:
 
     df_out = df_out.drop(columns=["kids_features"])
 
+    breakpoint()
+
     # add group fixed information
-    group_id_to_n_members_dict = dict(
-        df[["groups_id", "guardian_id"]].dropna().drop_duplicates().groupby("groups_id")["guardian_id"].nunique()
-    )
     df_out["n_group_members"] = df_out["group_id"].map(group_id_to_n_members_dict)
     del group_id_to_n_members_dict, df
 
@@ -170,6 +177,8 @@ if args.step_1:
 ########################################################################################################################################
 
 if args.step_2:
+
+    gc.collect()
 
     # STEP 2
     ## Create a df2 with daily changing features for group
@@ -315,6 +324,8 @@ if args.step_2:
 
 if args.step_3:
 
+    gc.collect()
+
     # STEP 3
     ## Create a df3 with daily changing features for guardians in a group
     ## Unique identifiers are guardian_id + group_id + day
@@ -346,7 +357,7 @@ if args.step_3:
 
     df_out = pd.DataFrame()
 
-    for guardian_id in valid_guardian_ids:
+    for guardian_id in tqdm(valid_guardian_ids):
 
         dfg_day = df_guardian_activity[df_guardian_activity["guardian_id"] == guardian_id]
 
@@ -373,12 +384,12 @@ if args.step_3:
 
         # calculate rolling variables, e.g. rolling sum of week number of interactions
         dfg_day["week_cumulative_n_guardian_messages"] = (
-            dfg_day["n_individual_guardian_interactions_daily"].rolling(7, min_periods=1).sum()
+            dfg_day["n_individual_guardian_interactions_daily"].rolling(8, min_periods=1).sum()
         )
 
         # month cumulative messages
         dfg_day["month_cumulative_n_guardian_messages"] = (
-            dfg_day["n_individual_guardian_interactions_daily"].rolling(30, min_periods=1).sum().fillna(0)
+            dfg_day["n_individual_guardian_interactions_daily"].rolling(31, min_periods=1).sum()
         )
 
         # create temp column for indicator if guardian interacted in the day
@@ -393,6 +404,10 @@ if args.step_3:
         dfg_day["monthly_cumulative_guardian_n_days_interacted"] = (
             dfg_day["guardian_interacted"].rolling(30, min_periods=1).sum().fillna(0)
         )
+
+        # exclude current day form cumulative counts
+        dfg_day["weekly_cumulative_guardian_n_days_interacted"] -= dfg_day["guardian_interacted"]
+        dfg_day["monthly_cumulative_guardian_n_days_interacted"] -= dfg_day["guardian_interacted"]
 
         # indicator: guardian has interacted in the last week
         dfg_day["weekly_guardian_interaction_indicator"] = (
@@ -447,6 +462,20 @@ if args.step_4:
 
     df = df.merge(df3, on=["day", "guardian_id", "group_id"], how="left")
     del df3
+
+    # fine tuning of preprocessing
+    df["Household Objects"] += df["Household objects"]
+    df = df.drop(columns=["Household objects", "message_type"])
+
+    df_weekday = pd.get_dummies(df["weekday"], drop_first=True)
+    df_weekday.columns = [f"weekday-{col}" for col in df_weekday.columns]
+    df = df.drop(columns=["weekday"])
+    df = df.join(df_weekday)
+
+    df.to_csv(OUTPUT_PATH / "df4_features_merge.csv")
+
+    if args.pickle:
+        general_utils.save_pickle(df, OUTPUT_PATH / "df4_features_merge.pickle")
 
     # MAYBE change this later! but still a lot of data...
     df = df.dropna()
