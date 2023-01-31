@@ -95,6 +95,14 @@ docs = ["sphinx-rtd-theme", "sphinx", "docutils (<0.18)"]
 bokeh = ["selenium", "bokeh"]
 
 [[package]]
+name = "cvxopt"
+version = "1.3.0"
+description = "Convex optimization package"
+category = "main"
+optional = false
+python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*"
+
+[[package]]
 name = "cycler"
 version = "0.11.0"
 description = "Composable style cycles"
@@ -877,7 +885,7 @@ testing = ["coverage (>=5.0.3)", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.10"
-content-hash = "8cee4a98ab9980a3f0251233dadcfdda45a1d362899f87db9b231a482fecbb19"
+content-hash = "e35b1cd9c9ca27d4f88358867ff3517bcc4d1f7bb8d61cd9f391f87130e40272"
 
 [metadata.files]
 atomicwrites = []
@@ -888,6 +896,7 @@ click = []
 cloudpickle = []
 colorama = []
 contourpy = []
+cvxopt = []
 cycler = []
 datetime = []
 distlib = []
