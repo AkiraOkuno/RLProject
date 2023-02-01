@@ -21,22 +21,22 @@ parser.add_argument(
 parser.add_argument(
     "--step_1",
     action="store_true",
-    help="Execute step 1 of processing",
+    help="Execute step 1 of processing: static group/guardian features",
 )
 parser.add_argument(
     "--step_2",
     action="store_true",
-    help="Execute step 2 of processing",
+    help="Execute step 2 of processing: dynamic group features, including daily nudge features",
 )
 parser.add_argument(
     "--step_3",
     action="store_true",
-    help="Execute step 3 of processing",
+    help="Execute step 3 of processing: dynamic guardian features",
 )
 parser.add_argument(
     "--step_4",
     action="store_true",
-    help="Execute step 4 of processing = Merge of step 1,2 and 3",
+    help="Execute step 4 of processing: Merge of dfs from step 1,2 and 3",
 )
 args = parser.parse_args()
 
@@ -163,8 +163,6 @@ if args.step_1:
 
     df_out = df_out.drop(columns=["kids_features"])
 
-    breakpoint()
-
     # add group fixed information
     df_out["n_group_members"] = df_out["group_id"].map(group_id_to_n_members_dict)
     del group_id_to_n_members_dict, df
@@ -261,7 +259,7 @@ if args.step_2:
         lambda x: ["OtherLearningDomain" if el == "other" else el for el in x]
     )
 
-    for col in cols:
+    for col in tqdm(cols):
 
         # remove dups in lists
         df_daily[col] = df_daily[col].apply(lambda x: list(set(x)))
@@ -312,8 +310,6 @@ if args.step_2:
     df_daily = df_daily.merge(df_length, on=["group_id", "day"], how="left")
 
     del df_length, df
-
-    # TODO: add past group interaction features, e.g. number of messages in last month, active parents last week
 
     if args.pickle:
         general_utils.save_pickle(df_daily, OUTPUT_PATH / "df2_daily_group_features.pickle")
@@ -418,6 +414,52 @@ if args.step_3:
         dfg_day["monthly_guardian_interaction_indicator"] = (
             dfg_day["monthly_cumulative_guardian_n_days_interacted"] > 0
         ).astype(int)
+
+        # add daily and weekly lagged features
+        dfg_day["weekly_cumulative_guardian_n_days_interacted_lag_1d"] = (
+            dfg_day["weekly_cumulative_guardian_n_days_interacted"].shift().fillna(0)
+        )
+        dfg_day["monthly_cumulative_guardian_n_days_interacted_lag_1d"] = (
+            dfg_day["monthly_cumulative_guardian_n_days_interacted"].shift().fillna(0)
+        )
+        dfg_day["weekly_guardian_interaction_indicator_lag_1d"] = (
+            dfg_day["weekly_guardian_interaction_indicator"].shift().fillna(0)
+        )
+        dfg_day["monthly_guardian_interaction_indicator_lag_1d"] = (
+            dfg_day["monthly_guardian_interaction_indicator"].shift().fillna(0)
+        )
+
+        dfg_day["weekly_cumulative_guardian_n_days_interacted_lag_1w"] = (
+            dfg_day["weekly_cumulative_guardian_n_days_interacted"].shift(7).fillna(0)
+        )
+        dfg_day["monthly_cumulative_guardian_n_days_interacted_lag_1w"] = (
+            dfg_day["monthly_cumulative_guardian_n_days_interacted"].shift(7).fillna(0)
+        )
+        dfg_day["weekly_guardian_interaction_indicator_lag_1w"] = (
+            dfg_day["weekly_guardian_interaction_indicator"].shift(7).fillna(0)
+        )
+        dfg_day["monthly_guardian_interaction_indicator_lag_1w"] = (
+            dfg_day["monthly_guardian_interaction_indicator"].shift(7).fillna(0)
+        )
+
+        # how many times the guardian has interacted in the 60 days after the current day (does not include current day!)
+        # useful to verify disengagement
+        guardian_interacted_series = dfg_day["guardian_interacted"]
+
+        # extend series with 60 values of 0
+        # last days will not contain 60 days ahead, but 59,58,...,1
+        guardian_interacted_series = pd.concat([guardian_interacted_series, pd.Series([0] * 60)]).reset_index(drop=True)
+        dfg_day["guardian_interaction_next_60_days"] = (
+            guardian_interacted_series.rolling(60, min_periods=1).sum().shift(-60)[:-60]
+        )
+
+        # same for 120 days
+        guardian_interacted_series = pd.concat([guardian_interacted_series, pd.Series([0] * 120)]).reset_index(
+            drop=True
+        )
+        dfg_day["guardian_interaction_next_120_days"] = (
+            guardian_interacted_series.rolling(120, min_periods=1).sum().shift(-120)[:-120]
+        )
 
         df_out = pd.concat([df_out, dfg_day])
 
