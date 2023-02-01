@@ -15,6 +15,17 @@ from tqdm import tqdm
 sys.path.append(os.getcwd())
 from src.utils import general_utils
 
+parser = argparse.ArgumentParser()
+
+parser.add_argument(
+    "--group_fixed_effects",
+    "-fe",
+    action="store_true",
+    help="Add group_fixed effects to covariate table",
+)
+args = parser.parse_args()
+
+
 DATA_PATH = pathlib.Path("data/processed")
 DATABASES_PATH = pathlib.Path("outputs/databases")
 
@@ -23,12 +34,52 @@ OUTPUT_PATH.mkdir(parents=True, exist_ok=True)
 
 df = general_utils.open_pickle(DATABASES_PATH / "df4_features_merge_without_nans.pickle")
 
+# GENERAL FILTERS
 df = df[df["n_group_members"] > 1]
 
-# create new features
+# remove private preschool kids
+df = df[df["private"] == 0]
+df = df.drop(columns=["private"], axis=1)
+
+# only parents with up to 5 kids, 108.9k -> 102.7k obs
+df = df[df["n_kids"] <= 5]
+
+if args.group_fixed_effects:
+
+    # remove groups with very low value counts (below 100), 102.7k -> 95.7k
+    # mean group count after removal is 490 and there are 195 groups
+    # will be used only if create group FE
+    group_count = df["group_id"].value_counts()
+    valid_group_ids = set(group_count[group_count >= 400].index.values)
+
+    df = df[df["group_id"].isin(valid_group_ids)]
+    del group_count, valid_group_ids
+
+# CREATE NEW FEATURES
+
+if args.group_fixed_effects:
+
+    # group FE
+    df_fe = pd.get_dummies(df["group_id"], drop_first=True)
+    df_fe.columns = [f"Group-fe-{group_id}" for group_id in df_fe.columns]
+    df = df.join(df_fe)
+    del df_fe
+
+# number of static members squared
+df["n_group_members_sq"] = df["n_group_members"] ** 2
+
+# proportion of guardians in the group that interacted in a day
 df["proportion_guardians_interacted_daily"] = df["n_interacting_guardians_daily"] / df["n_group_members"]
+
+# whether there are kids in preprimary
 df["Preprimary_class"] = (df["P1"] + df["P2"] > 0).astype(int)
 df["Primary_class"] = (df["C1"] + df["C2"] + df["C3"] > 0).astype(int)
+
+# At least 1 kid in preprimary and no other kid in primary, and vice-versa: both sum up to 95% of observations
+df["Only_preprimary"] = ((df["Preprimary_class"] == 1) & (df["Primary_class"] == 0)).astype(int)
+df["Only_primary"] = ((df["Preprimary_class"] == 0) & (df["Primary_class"] == 1)).astype(int)
+
+# Activity is focused for any primary class / preprimary class
 df["Primary_Activity"] = (
     df["Primary I (6-7 years)"] + df["Both(Primary I (6-7 years) and Primary II (7-8 years))"] > 0
 ).astype(int)
@@ -38,16 +89,35 @@ df["Preprimary_Activity"] = (
     + df["Pre-Primary II (5-6 years)"]
     > 0
 ).astype(int)
+
+# activity class == kid's class (kids class: test both "only_" and "_class")
 df["Activity_matching_class"] = (
-    ((df["Primary_Activity"] == 1) & (df["Primary_class"] == 1))
-    | ((df["Preprimary_Activity"] == 1) & (df["Preprimary_class"] == 1))
+    ((df["Primary_Activity"] == 1) & (df["Only_primary"] == 1))
+    | ((df["Preprimary_Activity"] == 1) & (df["Only_preprimary"] == 1))
 ).astype(int)
 
-drop = [
+# guardian has at least one male and no female, and vice versa: sum up to 95%
+df["Only_male"] = ((df["male"] == 1) & (df["female"] == 0)).astype(int)  # 45%
+df["Only_female"] = ((df["male"] == 0) & (df["female"] == 1)).astype(int)  # 49%
+
+# total number of nudges
+nudge_cols = ["Other", "NR", "SV", "FM", "GroupReportCard", "CreateVideoCompilation", "ManualCertificate", "QF"]
+df["n_nudges"] = 0
+
+for col in nudge_cols:
+    df["n_nudges"] += df[col]
+
+# number of nudges relative to group size
+df["nudges_per_group_size"] = df["n_nudges"] / df["n_group_members"]
+
+# create output variable: daily binary response
+y = df["guardian_interacted"]
+
+# list of columns that have to be always dropped
+always_drop = [
+    "guardian_interacted",
     "guardian_id",
     "group_id",
-    "n_males",
-    "n_females",
     "day",
     "DA",
     "hi",
@@ -56,26 +126,17 @@ drop = [
     "text",
     "ModMessageTypeSticker",
     "0-2",
+    "n_nudges",
 ]
-df = df.drop(columns=drop)
 
-# df["n_group_members_sq"] =df["n_group_members"]**2
+breakpoint()
+df = df.drop(columns=always_drop)
 
-y = df["guardian_interacted"]
+# list of features to be dropped, not to be fixed, used for test
+# drop: most likely to be officially dropped
+# drop2: more prone to testing
+
 drop = [
-    "guardian_interacted",
-    "mr",
-    "n_distinct_moderators_daily",
-    "week_cumulative_n_guardian_messages",
-    "month_cumulative_n_guardian_messages",
-    "Easy",
-    "ModMessageTypeChat",
-    "weekly_guardian_interaction_indicator",
-    "monthly_guardian_interaction_indicator",
-    "n_individual_guardian_interactions_daily",
-    "monthly_cumulative_guardian_n_days_interacted",
-]
-drop2 = [
     "P1",
     "P2",
     "C1",
@@ -86,6 +147,27 @@ drop2 = [
     "Both(Pre-Primary I (3-4 years) and Pre-Primary II (5-6 years))",
     "Pre-Primary I (3-4 years)",
     "Pre-Primary II (5-6 years)",
+]
+
+drop2 = [
+    "male",
+    "female",
+    "n_males",
+    "n_females",
+    "Preprimary_class",
+    "Primary_class",
+    "mr",
+    "n_distinct_moderators_daily",
+    "week_cumulative_n_guardian_messages",
+    "month_cumulative_n_guardian_messages",
+    "Easy",
+    "ModMessageTypeChat",
+    "weekly_guardian_interaction_indicator",
+    "monthly_guardian_interaction_indicator",
+    "n_individual_guardian_interactions_daily",
+    "monthly_cumulative_guardian_n_days_interacted",
+    # "n_group_members",
+    "n_group_members_sq",
 ]
 
 X = df.drop(columns=drop)
