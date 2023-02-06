@@ -4,13 +4,18 @@ import pathlib
 import random
 import sys
 import time
+from datetime import datetime, timedelta
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import statsmodels.api as sm
+import xgboost as xgb
+from matplotlib import pyplot as plt
+from sklearn import metrics
 from sklearn.linear_model import LogisticRegression
 from tqdm import tqdm
+from xgboost import plot_importance
 
 sys.path.append(os.getcwd())
 from src.utils import general_utils
@@ -23,13 +28,24 @@ parser.add_argument(
     action="store_true",
     help="Add group_fixed effects to covariate table",
 )
+parser.add_argument(
+    "--n_test_splits",
+    "-nt",
+    type=int,
+    help="Number of temporal splits for XGB cross validation",
+)
+parser.add_argument(
+    "--pickle",
+    action="store_true",
+    help="Whether to save final processed database pickle",
+)
 args = parser.parse_args()
 
 
 DATA_PATH = pathlib.Path("data/processed")
 DATABASES_PATH = pathlib.Path("outputs/databases")
 
-OUTPUT_PATH = pathlib.Path("outputs/plots/featurized_simulation")
+OUTPUT_PATH = pathlib.Path("outputs/models/featurized_model")
 OUTPUT_PATH.mkdir(parents=True, exist_ok=True)
 
 df = general_utils.open_pickle(DATABASES_PATH / "df4_features_merge_without_nans.pickle")
@@ -110,6 +126,14 @@ for col in nudge_cols:
 # number of nudges relative to group size
 df["nudges_per_group_size"] = df["n_nudges"] / df["n_group_members"]
 
+# sort by dates
+df = df.sort_values("day").reset_index(drop=True)
+
+# save indices for temporal test split
+min_date = datetime.strptime(df["day"].min(), "%Y-%m-%d")
+max_date = datetime.strptime(df["day"].max(), "%Y-%m-%d")
+date_range_days = (max_date - min_date).days
+
 # create output variable: daily binary response
 y = df["guardian_interacted"]
 
@@ -129,8 +153,10 @@ always_drop = [
     "n_nudges",
 ]
 
-breakpoint()
-df = df.drop(columns=always_drop)
+# save day column values
+days_series = df["day"]
+
+X = df.drop(columns=always_drop)
 
 # list of features to be dropped, not to be fixed, used for test
 # drop: most likely to be officially dropped
@@ -158,69 +184,135 @@ drop2 = [
     "Primary_class",
     "mr",
     "n_distinct_moderators_daily",
-    "week_cumulative_n_guardian_messages",
-    "month_cumulative_n_guardian_messages",
     "Easy",
     "ModMessageTypeChat",
-    "weekly_guardian_interaction_indicator",
-    "monthly_guardian_interaction_indicator",
     "n_individual_guardian_interactions_daily",
-    "monthly_cumulative_guardian_n_days_interacted",
     # "n_group_members",
     "n_group_members_sq",
+    "week_cumulative_n_guardian_messages",
+    "month_cumulative_n_guardian_messages",
+    "weekly_guardian_interaction_indicator",
+    "monthly_guardian_interaction_indicator",
+    "weekly_cumulative_guardian_n_days_interacted",
+    "monthly_cumulative_guardian_n_days_interacted",
+    # "weekly_cumulative_guardian_n_days_interacted_lag_1d",
+    "monthly_cumulative_guardian_n_days_interacted_lag_1d",
+    # "weekly_cumulative_guardian_n_days_interacted_lag_1w",
+    "monthly_cumulative_guardian_n_days_interacted_lag_1w",
+    # "weekly_guardian_interaction_indicator_lag_1d",
+    "monthly_guardian_interaction_indicator_lag_1d",
+    # "weekly_guardian_interaction_indicator_lag_1w",
+    "monthly_guardian_interaction_indicator_lag_1w",
+    "guardian_interaction_next_60_days",
+    "guardian_interaction_next_120_days",
 ]
 
-X = df.drop(columns=drop)
+
+X = X.drop(columns=drop)
 X = X.drop(columns=drop2)
+
+if args.pickle:
+
+    data = (X, y)
+    general_utils.save_pickle(data, path=DATABASES_PATH / "featurized_training_data.pickle")
 
 model = LogisticRegression(solver="liblinear", random_state=0)
 model.fit(X, y)
 
 log_reg = sm.Logit(y, X).fit_regularized(method="l1")
-print(log_reg.summary())
-breakpoint()
+summary = log_reg.summary()
+print(summary)
 
-import xgboost as xgb
-from matplotlib import pyplot as plt
-from sklearn import metrics
-from sklearn.model_selection import train_test_split
-from xgboost import plot_importance
+# save logreg summary table
+general_utils.save_pickle(summary, path=OUTPUT_PATH / "logreg_summary_table.pickle")
 
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25)
+#########################################
 
-model = xgb.XGBClassifier()
-model.fit(X_train, y_train)
-predicted_y = model.predict(X_test)
-print(metrics.classification_report(y_test, predicted_y))
-# plt.bar(range(len(model.feature_importances_)), model.feature_importances_)
+# run xgboost classification with temporal validation
+
+# re-add day column
+X["day"] = days_series
+X["day"] = pd.to_datetime(X["day"])
+
+# number of temporal splits
+n_splits = args.n_test_splits
+
+# if there are 600 days and 10 splits, we want days_split = [0,60,120,180,...,600]
+days_split = list(range(0, date_range_days, int(date_range_days / (n_splits + 1))))
+days_split = days_split[:-1]
+days_split.append(date_range_days + 1)
+
+# convert to actual datetime
+days_split = [min_date + timedelta(days=x) for x in days_split]
+
+results = []
+
+# run each epoch with cumulative training sets
+for epoch in tqdm(range(1, n_splits + 1)):
+
+    # date of last obs. in current epoch training data
+    upper_date = days_split[epoch]
+
+    # date of last obd. in current epoch test data
+    test_date = days_split[epoch + 1]
+
+    # create train and test sets
+    X_train = X[X["day"] <= upper_date].drop(columns=["day"])
+    X_test = X[(X["day"] > upper_date) & (X["day"] <= test_date)].drop(columns=["day"])
+
+    train_upper_index = X_train.index.values[-1]
+    test_upper_index = X_test.index.values[-1]
+
+    y_train = y[y.index <= train_upper_index]
+    y_test = y[(y.index > train_upper_index) & (y.index <= test_upper_index)]
+
+    # run model
+    model = xgb.XGBClassifier()
+    model.fit(X_train, y_train)
+    predicted_y = model.predict(X_test)
+
+    # report metrics
+    report = metrics.classification_report(y_test, predicted_y)
+
+    precision = metrics.precision_score(y_test, predicted_y)
+    recall = metrics.recall_score(y_test, predicted_y)
+    accuracy = metrics.accuracy_score(y_test, predicted_y)
+
+    results.append((precision, recall, accuracy))
+
+# create df for performance time series
+df_results = pd.DataFrame(results)
+df_results.columns = ["precision", "recall", "accuracy"]
+
+print(df_results)
 
 
-def feat_imp(df, model):
+# def feat_imp(df, model):
 
-    d = dict(zip(df.columns, model.feature_importances_))
-    ss = sorted(d, key=d.get, reverse=True)
-    n_features = len(ss)
-    top_names = ss[0:]
+#     d = dict(zip(df.columns, model.feature_importances_))
+#     ss = sorted(d, key=d.get, reverse=True)
+#     n_features = len(ss)
+#     top_names = ss[0:]
 
-    plt.figure(figsize=(25, 15))
-    plt.title("Feature importances")
-    plt.bar(range(n_features), [d[i] for i in top_names], color="r", align="center")
-    # plt.xlim(-1, n_features)
-    plt.xticks(range(n_features), top_names, rotation="vertical")
-    plt.savefig("xgb_feature_importance.png")
-    plt.tight_layout()
+#     plt.figure(figsize=(25, 15))
+#     plt.title("Feature importances")
+#     plt.bar(range(n_features), [d[i] for i in top_names], color="r", align="center")
+#     # plt.xlim(-1, n_features)
+#     plt.xticks(range(n_features), top_names, rotation="vertical")
+#     plt.savefig("xgb_feature_importance.png")
+#     plt.tight_layout()
 
-    plt.close()
+#     plt.close()
 
 
-feat_imp(X_train, model)
-breakpoint()
+# feat_imp(X_train, model)
+# breakpoint()
 
-from statsmodels.stats.outliers_influence import variance_inflation_factor
+# from statsmodels.stats.outliers_influence import variance_inflation_factor
 
-vif_data = pd.DataFrame()
-x = X.iloc[:, :]
-vif_data["feature"] = x.columns
-vif_data["VIF"] = [variance_inflation_factor(x.values, i) for i in range(len(x.columns))]
+# vif_data = pd.DataFrame()
+# x = X.iloc[:, :]
+# vif_data["feature"] = x.columns
+# vif_data["VIF"] = [variance_inflation_factor(x.values, i) for i in range(len(x.columns))]
 
-breakpoint()
+# breakpoint()
